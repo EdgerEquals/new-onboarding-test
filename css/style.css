@@ -81,3 +81,5 @@ footer.tester .tile { white-space: nowrap; font-size: var(--h1); padding: var(--
 #toast.on { opacity: 1; }
 html[data-light=on] .mini-logo { display: none; }
 html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
+.tile.is-live { border-style: dotted; }
+.knob-live { font-size: var(--u); }

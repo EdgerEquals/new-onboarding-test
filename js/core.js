@@ -4,7 +4,11 @@
    loudness (device volume + amplitude matrix, matrix TODO), sound only after the first tap, reduced motion (rule 2).
    RATIOS ONLY: every value is anchor x PHI^n with n a whole number. Lines that need an exponent choice are tagged  step:  and listed in
    the README self-check section for Danny. Nothing here makes a network request except the one weather read (city point only, see
-   Weather below). Nothing is sent anywhere. */
+   Weather below). Nothing is sent anywhere.
+   CONTINUITY (Kids Club "rhythms keep going while you're away", Danny 13:48 / 13:51 AWST 26 Oct; pushed 14:11 AWST): this file registers
+   the sky clocks, the dials and the knob nudges with js/rhythm-continuity.js (this page's own copy). The sound engine itself lives in
+   js/sound.js (loaded at idle after the first paint, "Sound responds fast", Danny 14:20 AWST); only the minimal start engine is here,
+   so the first touch anywhere prepares the audio graph silently. */
 (function (W) {
   "use strict";
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, LNPHI = Math.log(PHI);         // phi: the golden ratio, the sole scaling factor
@@ -22,7 +26,9 @@
   var S = blank();
   function load() { try { var o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o && o.v === S.v) S = Object.assign(blank(), o); } catch (e) {} return S; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-  function reset() { try { localStorage.removeItem(KEY); } catch (e) {} S = blank(); dials(); return S; }
+  function reset() { try { localStorage.removeItem(KEY); } catch (e) {} S = blank(); dials();
+    if (typeof nudge !== "undefined") Object.keys(nudge).forEach(function (k) { nudge[k] = 0; });
+    if (W.RhythmContinuity && W.RhythmContinuity.forget) W.RhythmContinuity.forget(); return S; }
 
   // ---------- event log (timestamped; never typed text) ----------
   var T0 = Date.now();
@@ -48,12 +54,13 @@
   }
   function tempB(b) { return wx ? b * Math.pow(PHI, (wx.pos * 2 - 1) / 2) : b; } // pump 2: local temperature, its place in today's range
   function kidGap() { if (!S.gaps.length) return null; var g = S.gaps.slice().sort(function (a, b) { return a - b; }); return g[Math.floor(g.length / 2)]; }
-  function B() {                                                                 // breath period in seconds
+  function liveB() {                                                             // breath period in seconds, live from the three pumps
     var b = tempB(skyB()), g = kidGap();
     if (g == null) return b;
     var w = 1 - Math.pow(IP, fibAtMost(S.gaps.length));                         // pump 3 takes over one phi rung per Fibonacci count of gaps
     return Math.exp((1 - w) * Math.log(b) + w * Math.log(g * Math.pow(PHI, N_KID)));
   }
+  function B() { var b = liveB(), n = knobRung("pace"); return n == null ? b : Math.pow(PHI, n); }   // a hand nudge sets B on its rung
   var lastTap = null;
   function tap(id) {                                                             // the kid's own rhythm (gaps between taps), and usage counts
     var now = Date.now();
@@ -121,7 +128,8 @@
   // ---------- season pump on the background (Dial 3 strength) ----------
   function seasonTint() {
     if (!SP) return;
-    var d = dials().season, warm = SP.output("warmth", rung(d)), calm = SP.output("calm", rung(d));
+    var d = dials().season, k = knobRung("tint"), r0 = k == null ? rung(d) : Math.pow(IP, k);
+    var warm = SP.output("warmth", r0), calm = SP.output("calm", r0);
     var bg = S.page.bgRGB || SP.WHITE, fg = S.page.fgRGB, f = SP.wcagFloor(bg, fg, warm, calm, d.floor);
     var r = document.documentElement;
     r.style.setProperty("--warm", f.warm); r.style.setProperty("--calm", 1 - f.calm);
@@ -144,17 +152,27 @@
     }).catch(function () { log("weather", { ok: false }); });
   }
 
-  // ---------- sound: only after the first tap; pitch from two pumps; loudness from the amplitude matrix (TODO) ----------
-  var ctx = null, soundOn = true;
-  function unlock() {                                                            // called inside the kid's first tap
-    if (ctx) return ctx;
+  // ---------- sound: only after the first tap; minimal START ENGINE here, voices in js/sound.js ("Sound responds fast") ----------
+  // The first touch anywhere makes the AudioContext and the one output node (graph prepared silently, nothing plays). js/sound.js
+  // (loaded at idle after the first paint) plays the chimes; js/sound-extras.js (media element bridge + Media Session) loads only after
+  // sound has begun. Pitch and loudness stay here because they are pumps.
+  var ctx = null, out = null, soundOn = true;
+  function unlock() {                                                            // called inside the kid's first touch (and every touch after)
+    if (ctx) { if (ctx.state !== "running" && soundOn) { try { ctx.resume(); } catch (e) {} } return ctx; }
     var A = W.AudioContext || W.webkitAudioContext; if (!A) return null;
-    try { ctx = new A(); log("audio-unlocked"); } catch (e) { ctx = null; }
+    try { ctx = new A(); out = ctx.createGain(); out.connect(ctx.destination); log("audio-unlocked"); } catch (e) { ctx = null; out = null; }
     return ctx;
   }
+  function chime(kind, steps) { var E = W.NOTSound; if (E && ctx && soundOn) return E.chime(kind, steps); }   // no engine yet: silent
   // AMPLITUDE MATRIX: TODO(Danny). Not yet defined (shared layer, Loudness). There is NO master volume; the device's own volume is the
   // one overall control and is never read or set. Until the matrix exists every layer uses the same placeholder share PHI^-3.
-  var AMP = { defined: false, level: function (layer) { return Math.pow(IP, 3); } };  // step: placeholder share, TODO amplitude matrix
+  // Logo sits under the page's music (Kids Club, Danny 14:25 AWST 26 Oct): logo level = page music level x PHI^-1, following it live.
+  // This page has no music layer, so the page's own sound (its chimes) stands in as the page level; any future music layer becomes "page".
+  // Dip (Danny 14:28 AWST 26 Oct): while the logo sound plays, page music dips x PHI^-1 with the free-wheel glide, then comes back; the
+  // logo stays tied to the UNDIPPED page level (level("page") below is never dipped). This page has no music to dip yet: a future music
+  // layer applies the dip on its own gain node, never inside AMP.level.
+  var AMP = { defined: false, level: function (layer) { var page = Math.pow(IP, 3);   // step: placeholder share, TODO amplitude matrix
+    return layer === "logo" ? AMP.level("page") * IP : page; } };
   var N_PITCH = 16;                                                              // step: base pitch (1/B) x PHI^16, Pump A
   function pitch() {
     var b = B(), off = 0, n = 0, mix = [];
@@ -162,35 +180,70 @@
     if (wx) mix.push(wx.pos * 2 - 1);
     mix.forEach(function (c) { off += c; n++; });
     var pumpB = n ? Math.round(off / n) : 0;                                     // Pump B: the feeds' mix sets the floor (-1) or headroom (+1)
+    var livePumpB = pumpB, kp = knobRung("pitch"); if (kp != null) pumpB = kp;    // a hand nudge moves Pump B along its own ladder
     var g = kidGap(), busy = (g != null && S.longGap != null && g * PHI <= S.longGap) ? 1 : 0;   // busier than their own usual: headroom
     var f = (1 / b) * Math.pow(PHI, N_PITCH);                                    // Pump A: the kid's own rhythm
     var ref = (1 / tempB(skyB())) * Math.pow(PHI, N_PITCH + pumpB);              // Pump B: the feeds' mix
     var lo = ref * IP, hi = ref * Math.pow(PHI, 1 + busy);                       // floor one phi-step under, headroom one (two when busy) over
     while (f < lo) f *= PHI;
     while (f > hi) f *= IP;
-    return { f0: f, B: b, ref: ref, pumpB: pumpB, busy: busy };
+    return { f0: f, B: b, ref: ref, pumpB: pumpB, livePumpB: livePumpB, busy: busy };
   }
   function night() { if (!SP) return 1; var c = SP.clocks(); return Math.pow(IP, 2 * c.rest); }  // step: quiet hours, 2 phi-steps down at full rest (Dial 3 worked example)
-  function chime(kind, steps) {
-    if (!ctx || !soundOn) return;
-    if (ctx.state === "suspended") ctx.resume();
-    var p = pitch(), b = p.B, t = ctx.currentTime, lv = AMP.level(kind) * night();
-    var atk = b * Math.pow(IP, 10), dec = b * Math.pow(IP, 6), gap = b * Math.pow(IP, 8);   // Rule phi timings from B
-    steps = steps || FIB[3];
-    for (var i = 0; i < steps; i++) {
-      var o = ctx.createOscillator(), g = ctx.createGain(), at = t + i * gap;
-      o.type = "sine"; o.frequency.value = p.f0 * FIB[i + 2] / FIB[i + 1];        // fib: each note a Fibonacci ratio of the base (2/1, 3/2, 5/3...)
-      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(lv * Math.pow(IP, i), at + atk);
-      g.gain.exponentialRampToValueAtTime(lv * Math.pow(IP, FIB[7]), at + atk + dec);   // fib: fade to PHI^-21 of its own level
-      o.connect(g); g.connect(ctx.destination); o.start(at); o.stop(at + atk + dec);
-    }
-    log("sound", { kind: kind, f0: Math.round(p.f0), pumpB: p.pumpB, busy: p.busy });
+  // ---------- knobs: settings open at live pump values (Danny 13:51 AWST) ----------
+  // Each knob is a ladder of whole phi rungs. The live chip is where the pumps are right now; a hand change is a nudge (whole rungs) on
+  // top of the live value, clamped to the ladder, kept through reloads and cleared by the daily restart.
+  var PACE_RUNGS = [1, 6];                                                       // step: placeholder ladder B = PHI^1..PHI^6 s, Danny TODO (like the dials)
+  var nudge = { pace: 0, tint: 0, pitch: 0 };
+  function ladder(k) {
+    var a = [], lo, hi;
+    if (k === "pace") { lo = PACE_RUNGS[0]; hi = PACE_RUNGS[1]; }
+    else if (k === "tint") { var d = dials().season; lo = d.ceil; hi = d.floor; }
+    else { lo = -1; hi = 1; }                                                    // Pump B: floor (-1), base (0), headroom (+1)
+    for (var i = lo; i <= hi; i++) a.push(i);
+    return a;
+  }
+  function liveRung(k) {
+    if (k === "pace") return Math.round(Math.log(liveB()) / LNPHI);
+    if (k === "tint") return dials().season.k;
+    var keep = nudge.pitch; nudge.pitch = 0; var p = pitch().livePumpB; nudge.pitch = keep; return p;
+  }
+  function clampTo(k, n) { var L = ladder(k); return Math.max(L[0], Math.min(L[L.length - 1], n)); }
+  function knobRung(k) { return nudge[k] ? clampTo(k, liveRung0(k) + nudge[k]) : null; }
+  function liveRung0(k) { var keep = nudge[k]; nudge[k] = 0; var r = liveRung(k); nudge[k] = keep; return r; }
+  function knob(k) { var live = clampTo(k, liveRung0(k)); return { ladder: ladder(k), live: live, eff: clampTo(k, live + nudge[k]), nudge: nudge[k] }; }
+  function setKnob(k, n) { var live = clampTo(k, liveRung0(k)); nudge[k] = n - live; log("knob", { knob: k, nudge: nudge[k] }); applyScale(); if (RC.knobs) RC.knobs.save(); }
+  function liveSky() {                                                           // the live inputs the knobs sit on
+    var z = W.RhythmContinuity ? W.RhythmContinuity.sun() : null;
+    return { sun: z ? z.elev : null, moonLit: z ? z.moonLit : null, season: z ? z.season : null, weather: wx ? wx.pos : null, B: liveB() };
+  }
+
+  // ---------- continuity registrations (js/rhythm-continuity.js) ----------
+  var RC = {}, RCm = W.RhythmContinuity;
+  if (RCm) {
+    // sky and season clocks: computed from the date itself, so catching up is a re-read (and the weather cache is re-checked)
+    RC.sky = RCm.register("sky", { save: function () { var z = RCm.sun(); return { elev: z.elev, season: z.season, moon: z.moon }; },
+      catchUp: function (e, st, mode) { if (mode === "return") { applyScale(); weather(); } }, reset: function () { applyScale(); } });
+    // dials: Danny's rungs are kept as set (they live in the on-device record); the live tint is re-read on return
+    RC.dials = RCm.register("dials", { save: function () { return { season: dials().season.k, pace: dials().pace.k }; },
+      catchUp: function (e, st, mode) { if (mode === "return") applyScale(); }, reset: function () { visitTaps = 0; applyScale(); } });
+    // knob nudges: kept through reloads, cleared by the daily restart
+    RC.knobs = RCm.register("knobs", { save: function () { return { nudge: nudge }; },
+      catchUp: function (e, st, mode) { if (mode === "return" || mode === "restart" || !st || !st.nudge) return;
+        Object.keys(nudge).forEach(function (k) { if (isFinite(st.nudge[k])) nudge[k] = st.nudge[k]; }); },
+      reset: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); applyScale(); } });
+    // sound: the on/off choice carries through reloads and the daily restart; on return the engine wakes what was playing
+    RC.sound = RCm.register("sound", { save: function () { return { on: soundOn, unlocked: !!ctx }; },
+      catchUp: function (e, st, mode) { if (mode === "return") { var E = W.NOTSound; if (E && E.wake) E.wake(); return; } if (st && st.on === false) soundOn = false; },
+      reset: function () {} });
   }
 
   function reducedMotion(on) { document.documentElement.setAttribute("data-rm", on ? "on" : "off"); applyScale(); }
 
   W.NOT = { PHI: PHI, IP: IP, FIB: FIB, get S() { return S; }, load: load, save: save, reset: reset, log: log, tap: tap, B: B,
     applyScale: applyScale, dials: dials, rung: rung, weather: weather, unlock: unlock, chime: chime, pitch: pitch, AMP: AMP,
-    setSound: function (v) { soundOn = v; }, get sound() { return soundOn; }, reducedMotion: reducedMotion, rm: rm,
+    setSound: function (v) { soundOn = v; if (RC.sound) RC.sound.save(); if (!v && ctx && W.NOTSound && W.NOTSound.quiet) W.NOTSound.quiet(); },
+    get sound() { return soundOn; }, get ctx() { return ctx; }, get out() { return out; }, night: night,
+    knob: knob, setKnob: setKnob, liveSky: liveSky, liveB: liveB, reducedMotion: reducedMotion, rm: rm,
     get wx() { return wx; }, kidGap: kidGap, skyB: skyB };
 })(window);

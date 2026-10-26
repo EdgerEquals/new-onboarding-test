@@ -4,7 +4,7 @@
 (function (W, D) {
   "use strict";
   var N = W.NOT, A = W.ART, PHI = N.PHI, IP = N.IP, FIB = N.FIB;
-  var BUILD = "v0.1 test build, 2026-10-26";                                     // label: version stamp
+  var BUILD = "v0.2 test build, 2026-10-26 (rhythms keep going)";                                     // label: version stamp
   var FLOW = ["welcome", "name", "botname", "avatar", "colour", "frame", "pattern", "logo", "sections", "page"];
   var PATH = ["avatar", "colour", "frame", "pattern", "logo", "sections"];      // the kid's own page path (logo step inside it)
   var PRE = PATH.slice(0, PATH.indexOf("logo"));                                 // pieces that feed the logo before the hand-over
@@ -175,10 +175,11 @@
   var open = null;
   function overlay(kind) {
     open = kind;
-    var body = kind === "logo" ? [h("h1", { text: "Change your logo" }), editor("overlay")] : avatarEditor();
+    var body = kind === "logo" ? [h("h1", { text: "Change your logo" }), editor("overlay")] : kind === "knobs" ? knobsPanel() : avatarEditor();
     var o = h("div", { class: "overlay", role: "dialog", "aria-modal": "true" }, [h("div", { class: "sheet" }, body.concat([btn("Done", function () { open = null; o.remove(); N.log("overlay-close", { kind: kind }); render(); }, "primary", "overlay-done")]))]);
     var old = D.querySelector(".overlay"); if (old) old.remove();
     D.body.appendChild(o); o.querySelector("button").focus();
+    if (kind === "knobs") { knobsSync(); knobsTick(); }
   }
   function avatarEditor() {
     var a = S.avatar;
@@ -198,11 +199,57 @@
     (screens[S.step] || screens.welcome)();
     if (open && !D.querySelector(".overlay")) overlay(open);
     else if (open) overlay(open);
+    motionSync();
   }
+
+  // ---------- logo motion keeps going (continuity): its phase is a function of time, t = now - t0 ----------
+  // Every render draws a fresh logo whose CSS animation would start at zero; instead each one is set to the shared phase, which is
+  // saved on the device, carried through reloads and returns, and restarts with the daily restart.
+  var MOTION = ["breathe", "spin"], motionT0 = Date.now();
+  function motionSync() {
+    if (!D.getAnimations) return;
+    var e = Date.now() - motionT0;
+    D.getAnimations().forEach(function (a) { if (MOTION.indexOf(a.animationName) >= 0) try { a.currentTime = e * (a.playbackRate || 1); } catch (er) {} });
+  }
+  if (W.RhythmContinuity) RhythmContinuity.register("logo:motion", { save: function () { return { t0: motionT0 }; },
+    catchUp: function (e, st, mode) { if (mode !== "restart" && st && isFinite(st.t0)) motionT0 = st.t0; requestAnimationFrame(motionSync); },
+    reset: function () { motionT0 = Date.now(); motionSync(); } });
+
+  // ---------- knobs: open at the live pump values (Kids Club "settings open live", Danny 13:51 AWST) ----------
+  var KNOBS = [["pace", "Pace (your rhythm)"], ["tint", "Sky tint (season)"], ["pitch", "Pitch (sky and weather)"]];
+  var PCT = 100, TURN = 360;                                                     // unit: per cent; degrees per turn
+  function knobLabel(k, n) {
+    if (k === "pace") return "breath " + Math.round(Math.pow(PHI, n)) + " s";
+    if (k === "pitch") return n < 0 ? "lower" : n > 0 ? "higher" : "middle";
+    var L = N.knob("tint").ladder; return n === L[0] ? "strongest" : n === L[L.length - 1] ? "softest" : "rung " + n;
+  }
+  function knobsPanel() {
+    var wrap = h("div", { class: "knobs" }), live = h("p", { class: "sub knob-live" });
+    KNOBS.forEach(function (kk) {
+      var k = kk[0], st = N.knob(k);
+      wrap.appendChild(h("div", { class: "group" }, [h("h2", { text: kk[1] }), h("div", { class: "tiles", "data-knob": k }, st.ladder.map(function (n) {
+        var b = btn(knobLabel(k, n), function () { N.setKnob(k, n); knobsSync(); }, "pick", "knob:" + k + ":" + n);
+        b.setAttribute("data-rung", n); return b; }))]));
+    });
+    return [h("h1", { text: "Knobs" }), live, wrap, h("p", { class: "note", text: "Each knob starts where the sky, the weather and your rhythm have it right now (the dotted one). Tap to nudge it. Tap the dotted one to go back to live. Nudges clear at the daily restart." })];
+  }
+  function knobsSync() {
+    var o = D.querySelector(".overlay"); if (!o || open !== "knobs") return;
+    KNOBS.forEach(function (kk) { var k = kk[0], st = N.knob(k);
+      o.querySelectorAll('[data-knob="' + k + '"] .tile').forEach(function (b) { var n = +b.getAttribute("data-rung");
+        b.classList.toggle("on", n === st.eff); b.setAttribute("aria-pressed", n === st.eff ? "true" : "false");
+        b.classList.toggle("is-live", n === st.live); b.title = n === st.live ? "live now" : ""; }); });
+    var z = N.liveSky(), l = o.querySelector(".knob-live");
+    if (l) l.textContent = "Live now: sun " + (z.sun == null ? "?" : Math.round(z.sun) + "°") + ", moon " + (z.moonLit == null ? "?" : Math.round(z.moonLit * PCT) + "% lit") +
+      ", season " + (z.season == null ? "?" : Math.round(z.season * TURN) + "°") + ", weather " + (z.weather == null ? "not in yet" : Math.round(z.weather * PCT) + "% of today's range") +
+      ", breath " + z.B.toFixed(1) + " s";
+  }
+  var knobTimer = 0;
+  function knobsTick() { clearTimeout(knobTimer); if (open !== "knobs") return; if (!D.hidden) knobsSync(); knobTimer = setTimeout(knobsTick, N.B() * Math.pow(IP, 2) * MSF); }
 
   // ---------- tester bar: build stamp, bug mark, feedback export, less motion, sound, start over ----------
   var armed = null, barOpen = false;
-  function startOver() { N.log("reset"); N.reset(); S = N.S; open = null; var o = D.querySelector(".overlay"); if (o) o.remove(); S.step = "welcome"; render(); toast("Started over. Everything from the last run is cleared."); }
+  function startOver() { N.log("reset"); N.reset(); S = N.S; motionT0 = Date.now(); open = null; var o = D.querySelector(".overlay"); if (o) o.remove(); S.step = "welcome"; render(); toast("Started over. Everything from the last run is cleared."); }
   function toast(t) { var e = D.getElementById("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove("on"); }, N.B() * Math.pow(IP, 2) * MSF); }
   var MSF = 1000;                                                                // unit: ms per second
   function summary() {
@@ -217,6 +264,8 @@
           changedSinceStart: JSON.stringify(S.logo.start) !== JSON.stringify(S.logo.current) } },
       anchors: { B_seconds: N.B(), skyB_seconds: N.skyB(), kidGapMedian: N.kidGap(), gaps: S.gaps.length, weather: N.wx ? { pos: N.wx.pos, U: N.wx.U } : null },
       pitch: N.S && N.pitch(), amplitudeMatrix: N.AMP.defined ? "defined" : "TODO (not yet defined; placeholder share used)",
+      continuity: W.RhythmContinuity ? W.RhythmContinuity.info() : null, knobs: { pace: N.knob("pace"), tint: N.knob("tint"), pitch: N.knob("pitch") },
+      tapToSound: S.lastTapToSound || null, soundBridged: !!(W.NOTSoundExtras && W.NOTSoundExtras.bridged),
       dials: S.dials, usage: S.usage, bugMarks: S.bugs, events: S.events };
   }
   function copyFeedback() {
@@ -234,7 +283,7 @@
   function bar() {
     var rmOn = N.rm();
     var resetBtn = btn(armed ? "Tap again to start over" : "Start over", function () { if (armed) { clearTimeout(armed); armed = null; startOver(); bar(); return; } armed = setTimeout(function () { armed = null; bar(); }, N.B() * MSF * Math.pow(IP, 2)); bar(); }, "small warn", "reset");
-    var more = [btn("🐞 Bug here", function () { S.bugs++; N.log("bug-mark", { step: S.step, overlay: open }); toast("Marked. It's in the feedback with this screen."); }, "small", "bug"),
+    var more = [btn("🎛 Knobs", function () { N.log("knobs-open"); overlay("knobs"); }, "small", "knobs"), btn("🐞 Bug here", function () { S.bugs++; N.log("bug-mark", { step: S.step, overlay: open }); toast("Marked. It's in the feedback with this screen."); }, "small", "bug"),
       btn(rmOn ? "Motion: less" : "Motion: full", function () { N.reducedMotion(!N.rm()); N.log("reduced-motion", { on: N.rm() }); bar(); }, "small", "motion"),
       btn(N.sound ? "Sound: on" : "Sound: off", function () { N.setSound(!N.sound); N.log("sound-toggle", { on: N.sound }); bar(); }, "small", "sound")];
     var b = h("footer", { class: "tester" + (barOpen ? " open" : ""), "aria-label": "Tester tools" }, [
@@ -250,12 +299,17 @@
   var mq = W.matchMedia ? W.matchMedia("(prefers-reduced-motion: reduce)") : null;
   N.reducedMotion(!!(mq && mq.matches));
   if (S.step !== "welcome") { S.resumeTo = S.step; S.step = "welcome"; }       // resume on refresh: offer Continue
-  D.addEventListener("pointerdown", function (e) { N.unlock(); var t = e.target.closest && e.target.closest("[data-id]"); N.tap(t ? t.getAttribute("data-id") : null); }, true);
+  var soundAsked = false;
+  function loadSound() { if (soundAsked) return; soundAsked = true; var s = D.createElement("script"); s.src = "js/sound.js"; s.async = true; D.head.appendChild(s); }
+  D.addEventListener("pointerdown", function (e) { N.unlock(); loadSound(); var t = e.target.closest && e.target.closest("[data-id]"); N.tap(t ? t.getAttribute("data-id") : null); }, true);
   W.addEventListener("resize", function () { N.applyScale(); footH(); });
   D.addEventListener("visibilitychange", function () { if (D.hidden) N.log("hidden"); });
   N.log("load", { build: BUILD });
   render(); bar();
   var idle = W.requestIdleCallback || function (f) { setTimeout(f, N.B() * MSF * Math.pow(IP, FIB[4])); };
+  var idleT1 = W.requestIdleCallback || function (f) { requestAnimationFrame(function () { setTimeout(f); }); };   // Safari: the frame after
+  requestAnimationFrame(function () { idleT1(loadSound); });                      // T1: the sound engine loads at idle just after the first paint
   idle(function () { N.weather(); });                                             // tier 2: the weather feed loads at idle
-  W.NOTAPP = { summary: summary, BUILD: BUILD };
+  D.addEventListener("not:resume-tap", function () { toast("Tap anywhere to bring the sound back."); });   // one gentle tap, never a reset
+  W.NOTAPP = { summary: summary, BUILD: BUILD, motionSync: motionSync, get motionT0() { return motionT0; } };
 })(window, document);

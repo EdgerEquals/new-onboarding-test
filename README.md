@@ -27,6 +27,21 @@ Also built in:
 - **Golden-ratio dials**: one dial shape, rungs φ^-k, moving one rung at a time, logged. The pace dial moves from the tester's own pace. A move past a floor or ceiling becomes a proposal and isn't applied.
 - **Reduced motion**: follows `prefers-reduced-motion`, plus a "Motion" toggle in the tester bar.
 
+## v0.2: rhythms keep going while you're away (26 Oct 2026)
+
+Kids Club standard "Rhythms keep going while you're away" (Danny 13:48 / 13:51 AWST; "Push both everywhere" 14:11 AWST), copied from the dad-page model into this page's **own copy** (`js/rhythm-continuity.js`). Nothing links to or loads from dad-page. The "own radio" part is not built here yet.
+
+- **Save and restore**: every rhythm registers with `js/rhythm-continuity.js`: `sky` (sky and season clocks), `dials`, `knobs` (hand nudges), `sound` (the on/off choice) and `logo:motion` (the logo's breathe/spin phase, written as a function of time). They save on the device under `notRhythm.v1` once per breath B and on every hide, pagehide and freeze, and restore at once after a reload.
+- **Catch up on return**: on `visibilitychange`, `pageshow` and `resume` the time away fast-forwards every rhythm (analytically, no frame simulation), and the sky clocks, tint and weather cache are re-read.
+- **Daily restart**: everything restarts together at local solar midnight (the sun's lowest point at the shared city point), not a clock time. Nudges clear; the sound choice carries.
+- **Sound keeps going / responds fast** (Danny 14:20 AWST): the first touch anywhere makes the audio graph silently (`js/core.js`, the minimal start engine). The chime voices (`js/sound.js`) load at idle just after the first paint. The extras (`js/sound-extras.js`: the hidden `<audio playsinline>` bridge from a MediaStream and the Media Session) load only after sound has begun. On return the page resumes the sound; if the phone insists, a gentle "Tap anywhere to bring the sound back" shows instead of a reset.
+- **Knobs open live**: tester bar → More → 🎛 Knobs. Pace (breath B), Sky tint (season dial) and Pitch (Pump B) each open on the rung the pumps have right now (the dotted tile), with a live line (sun, moon, season, weather, breath). They keep updating while open. A tap is a nudge on top of live; tapping the dotted tile goes back to live. The pace ladder (φ^1..φ^6 s) is a placeholder, like the dials (Danny TODO).
+- **Logo loudness** (Danny 14:25 AWST): logo level = page level × φ^-1, live. **Dip** (14:28 AWST): there's no page music here yet, so nothing to dip; a future music layer dips its own gain × φ^-1 while the logo sounds, and the logo stays tied to the undipped level.
+- **Start over** also clears `notRhythm.v1`.
+- The export now includes `continuity`, `knobs`, `tapToSound` (touch to first note, plus the device's output latency) and `soundBridged`.
+
+Rollback: tag `pre-continuity-2026-10-26` (v0.1, 7575750).
+
 ## How to test
 
 Open the live page (GitHub Pages) in any browser, on a phone or a desktop, and go through it as a kid or as yourself.
@@ -44,11 +59,11 @@ What the export leaves out: the name typed on the first screen, any typed text, 
 
 ## Reset
 
-Use **Start over** (tap twice). Or clear site data, or run `localStorage.removeItem('not.v1'); localStorage.removeItem('not.wx')` in the console.
+Use **Start over** (tap twice). Or clear site data, or run `localStorage.removeItem('not.v1'); localStorage.removeItem('not.wx'); localStorage.removeItem('notRhythm.v1')` in the console.
 
 ## Privacy and network
 
-- Everything is stored on the device in `localStorage` (`not.v1`, plus the weather cache `not.wx`).
+- Everything is stored on the device in `localStorage` (`not.v1`, the rhythm snapshot `notRhythm.v1`, plus the weather cache `not.wx`).
 - **One** network request is made: an idle-time GET to `api.open-meteo.com` carrying only the shared layer's coarse city point (Perth, -32.0 / 115.9). It sends no credentials and no referrer, and carries nothing about the tester. If it fails, the sky clocks carry anchor B alone.
 - No analytics, no fonts or CDNs, no other requests. `robots.txt` and `noindex` keep it out of search.
 
@@ -60,7 +75,9 @@ There's **no vault yet**. The page needs no secrets. If it ever does (for exampl
 
 - `index.html`
 - `css/style.css`: every size and timing is a CSS variable set from the anchors.
+- `js/rhythm-continuity.js`: this page's own copy of the continuity module (loaded in `<head>`).
 - `js/season-pumps.js`: a copy of the Kids Club Season pumps file.
+- `js/sound.js`: the chime voices (idle after first paint). `js/sound-extras.js`: media bridge and Media Session (after sound begins).
 - `js/core.js`: the record, event log, anchor B, scale, dials, weather and sound.
 - `js/art.js`: the avatar and logo SVG.
 - `js/app.js`: the flow, editor, tester bar and export.
