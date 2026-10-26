@@ -4,7 +4,7 @@
 (function (W, D) {
   "use strict";
   var N = W.NOT, A = W.ART, PHI = N.PHI, IP = N.IP, FIB = N.FIB;
-  var BUILD = "v0.4 test build, 2026-10-26 (Deep and Steve fixes)";                                     // label: version stamp
+  var BUILD = "v0.5 test build, 2026-10-26 (next round fixes)";                                     // label: version stamp
   var FLOW = ["welcome", "name", "botname", "avatar", "colour", "frame", "pattern", "logo", "sections", "page"];
   var SECTIONS = ["About me", "Things I love", "My bot's corner", "Pictures", "My music"], MOTIONS = ["breathe", "still", "spin"];   // label: section names; logo motions
   var PATH = ["avatar", "colour", "frame", "pattern", "logo", "sections"];      // the kid's own page path (logo step inside it)
@@ -19,11 +19,11 @@
   }
   var keepFocus = null;                                                          // keyboard focus stays on the picked tile across a re-render
   // toggles ignore a second tap that lands within the quick-feedback time (sky-B x PHI^-9), so a double tap doesn't flip them back
-  var TOGGLES = /^(sound|motion|tester-more|section:|logo-more|live-share)/, lastTap = {};
+  var TOGGLES = /^(sound|motion|tester-more|section:|logo-more|live-share)/;
   function btn(label, fn, cls, id) { var b = h("button", { type: "button", class: "tile " + (cls || ""), "data-id": id || label, on: { click: function (e) {
-      var k = b.getAttribute("data-id"), now = Date.now();
-      if (TOGGLES.test(k) && lastTap[k] && now - lastTap[k] < N.skyBreath() * Math.pow(IP, 9) * MSF) return;
-      lastTap[k] = now; keepFocus = k; fn(e); } } }, [label]); return b; }
+      var k = b.getAttribute("data-id");
+      if (TOGGLES.test(k) && e.detail > 1) return;                       // the device's own double-tap detection: the second tap of a double tap is ignored, no timer
+      keepFocus = k; fn(e); } } }, [label]); return b; }
   function refocus() {
     if (keepFocus == null) return false;
     var t = null; D.querySelectorAll("[data-id]").forEach(function (e) { if (!t && e.getAttribute("data-id") === keepFocus) t = e; });
@@ -158,7 +158,7 @@
   function newKidBtn() {
     var b = btn(newArmed ? "Tap again: this clears the last page" : "No, I'm someone new", function () {
       if (newArmed) { clearTimeout(newArmed); newArmed = 0; startOver(); return; }
-      newArmed = setTimeout(function () { newArmed = 0; render(); }, N.skyBreath() * Math.pow(IP, 2) * MSF); N.log("new-kid-armed"); render(); }, newArmed ? "ghost warn" : "ghost", "start-over-welcome");
+      newArmed = setTimeout(function () { newArmed = 0; render(); }, N.hold("Tap again: this clears the last page")); N.log("new-kid-armed"); render(); }, newArmed ? "ghost warn" : "ghost", "start-over-welcome");
     return b;
   }
   // ---------- screens ----------
@@ -344,7 +344,7 @@
   // ---------- tester bar: build stamp, bug mark, feedback export, less motion, sound, start over ----------
   var armed = null, barOpen = false;
   function startOver() { N.log("reset"); N.reset(); S = N.S; motionT0 = Date.now(); open = null; var o = D.querySelector(".overlay"); if (o) o.remove(); S.step = "welcome"; if (W.HelpOrb) W.HelpOrb.paint(); render(); toast("Started over. Everything from the last run is cleared."); }
-  function toast(t) { say(t); var e = D.getElementById("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove("on"); }, N.skyBreath() * Math.pow(IP, 2) * MSF); }
+  function toast(t) { say(t); var e = D.getElementById("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove("on"); }, N.hold(t)); }
   var MSF = 1000;                                                                // unit: ms per second
   function summary() {
     var words = (S.callMe || "").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean), bn = S.botName || "", bl = bn.toLowerCase();
@@ -377,7 +377,7 @@
   }
   function bar() {
     var rmOn = N.rm();
-    var resetBtn = btn(armed ? "Tap again to start over" : "Start over", function () { if (armed) { clearTimeout(armed); armed = null; startOver(); bar(); return; } armed = setTimeout(function () { armed = null; bar(); }, N.skyBreath() * MSF * Math.pow(IP, 2)); bar(); }, "small warn", "reset");
+    var resetBtn = btn(armed ? "Tap again to start over" : "Start over", function () { if (armed) { clearTimeout(armed); armed = null; startOver(); bar(); return; } armed = setTimeout(function () { armed = null; bar(); }, N.hold("Tap again to start over")); bar(); }, "small warn", "reset");
     var more = [btn("🎛 Knobs", function () { N.log("knobs-open"); overlay("knobs"); }, "small", "knobs"), btn("🐞 Bug here", function () { S.bugs++; N.log("bug-mark", { step: S.step, overlay: open }); toast("Marked. It's in the feedback with this screen."); }, "small", "bug"),
       btn(rmOn ? "Motion: less" : "Motion: full", function () { N.reducedMotion(!N.rm()); N.log("reduced-motion", { on: N.rm() }); bar(); }, "small", "motion"),
       (function () { var sb = btn(N.sound ? "Sound: on" : "Sound: off", function () { N.setSound(!N.sound); N.log("sound-toggle", { on: N.sound }); bar(); }, "small", "sound"); sb.appendChild(tuning()); return sb; })()];

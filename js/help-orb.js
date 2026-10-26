@@ -87,11 +87,14 @@
   function settle() { if (grown) grown.classList.remove("help-grow"); grown = null; }
   function closeBubble() { bubble.hidden = true; armed = false; orb.classList.remove("armed"); settle(); }
   function hit(a, b) { return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom); }
-  function show(nodes) {                                                         // the bubble keeps clear of the screen's main button
-    bubble.replaceChildren.apply(bubble, nodes); bubble.classList.remove("at-top"); bubble.hidden = false;
-    var r = bubble.getBoundingClientRect();
-    D.querySelectorAll(".screen .tile.primary, .sheet .tile.primary").forEach(function (m) { if (m.offsetParent !== null && hit(r, m.getBoundingClientRect())) bubble.classList.add("at-top"); });
+  // one keep-in-view rule for every floating layer (help bubble and look panel): if it would leave the top of the screen or cover the
+  // screen's main button, it moves to the top; its height is capped by the screen (CSS), so it shrinks and scrolls rather than spills
+  function keepInView(el) {
+    el.classList.remove("at-top"); var r = el.getBoundingClientRect(), up = r.top < 0;
+    D.querySelectorAll(".screen .tile.primary, .sheet .tile.primary").forEach(function (m) { if (m.offsetParent !== null && hit(r, m.getBoundingClientRect())) up = true; });
+    if (up) el.classList.add("at-top");
   }
+  function show(nodes) { bubble.replaceChildren.apply(bubble, nodes); bubble.hidden = false; keepInView(bubble); }
   function p(text) { var e = D.createElement("p"); e.textContent = text; return e; }
   function drop(el) {                                                            // the one drop handler (every look, real or virtual drop)
     settle(); if (!el) { show([p("Drop me right on a button or a tile, and I'll explain it.")]); return; }
@@ -111,9 +114,9 @@
     N.S.orbLook = { text: text, kind: kind }; N.save(); paint(); N.log("orb-look", { kind: kind });
     closePanel(); closeBubble(); armed = false; orb.classList.remove("armed");
   }
-  function closePanel() { panel.hidden = true; lookBtn.setAttribute("aria-expanded", "false"); }
+  function closePanel() { panel.hidden = true; D.documentElement.classList.remove("picking"); lookBtn.setAttribute("aria-expanded", "false"); }
   lookBtn.addEventListener("click", function (e) { e.stopPropagation(); closeBubble();
-    if (panel.hidden) { panel.replaceChildren(p("Pick my look. I work the same in every look."), lookPicker()); panel.hidden = false; lookBtn.setAttribute("aria-expanded", "true"); }
+    if (panel.hidden) { panel.replaceChildren(p("Pick my look. I work the same in every look."), lookPicker()); panel.hidden = false; D.documentElement.classList.add("picking"); keepInView(panel); lookBtn.setAttribute("aria-expanded", "true"); }
     else closePanel(); });
   function openHelp() {
     bubble.classList.remove("nudge"); closePanel(); armed = true; orb.classList.add("armed");
@@ -151,7 +154,7 @@
   // the orb never sits on a control: if its home spot covers one, it lifts by whole orb-heights until it is clear
   function controls() { return [].filter.call(D.querySelectorAll("button, input, a, [data-id]"), function (c) { return !mine(c) && !c.closest("footer.tester") && c.offsetParent !== null; }); }
   function dodge() {
-    var R = D.documentElement.style, step = orb.offsetHeight + lookBtn.offsetHeight * IP, cs = controls(), best = 0;
+    var R = D.documentElement.style, step = orb.offsetHeight, cs = controls(), best = 0;
     R.setProperty("--orb-lift", "0px");
     var base = orb.getBoundingClientRect(), lb = lookBtn.getBoundingClientRect();
     for (var k = 0; k <= FIB[5]; k++) {                                          // fib: up to 8 orb-heights
@@ -161,16 +164,17 @@
     }
     R.setProperty("--orb-lift", best + "px");
   }
-  var dq = 0; function soon() { if (dq) return; dq = requestAnimationFrame(function () { dq = 0; dodge(); }); }
-  new MutationObserver(soon).observe(D.getElementById("app"), { childList: true, subtree: true });
-  W.addEventListener("scroll", soon, { passive: true }); W.addEventListener("resize", soon); soon();
+  var dq = 0; function soon() { if (dq) return; dq = 1; Promise.resolve().then(function () { dq = 0; dodge(); }); }   // same turn as the change, so the orb never shifts under a finger mid-tap
+  new MutationObserver(soon).observe(D.getElementById("app"), { childList: true, subtree: true }); new MutationObserver(soon).observe(D.body, { childList: true });
+  D.addEventListener("scroll", soon, { passive: true, capture: true }); W.addEventListener("resize", soon); soon();
   paint();
   // one-time first-screen nudge: one gentle pulse and a hint that taps pass straight through
   if (!N.S.orbNudged) {
     N.S.orbNudged = true; N.save(); orb.classList.add("pulse-once");
-    show([p("Drag me onto anything to ask what it does.")]); bubble.classList.add("nudge");
+    var NUDGE = "Drag me onto anything to ask what it does.";
+    show([p(NUDGE)]); bubble.classList.add("nudge");
     var fade = function () { if (bubble.classList.contains("nudge")) { bubble.classList.remove("nudge"); closeBubble(); } };
-    setTimeout(fade, N.B() * MS); D.addEventListener("pointerdown", fade, { once: true, capture: true });
+    setTimeout(fade, N.hold(NUDGE)); D.addEventListener("pointerdown", fade, { once: true, capture: true });
     setTimeout(function () { orb.classList.remove("pulse-once"); }, N.B() * MS);
   }
   W.HelpOrb = { calm: calm, paint: paint, drop: drop, helpFor: helpFor, settle: settle, close: closeBubble, look: look, LOOKS: LOOKS };   // drop(el) is the virtual drop for questionnaires

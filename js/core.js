@@ -81,14 +81,21 @@
 
   // ---------- anchor S: the screen's shorter side; sizes and timings as CSS variables ----------
   var N_CAP = 6;                                                                 // step: big screens: S capped at 24 px x PHI^6, so the text unit S x PHI^-6 tops out on the 24 px rung
-  var WCAG_MIN = 24, WCAG_AAA = 44;                                              // cite: WCAG 2.2 SC 2.5.8 (24 CSS px) and SC 2.5.5 (44 CSS px) target sizes
+  // RAILS (cited, fixed; nothing moves a rail; shared.md "seeds, rails and what may move"). Tap floor stays 24 (Danny 20:44 AWST 26 Oct).
+  var WCAG_MIN = 24, WCAG_AAA = 44;                                              // cite: WCAG 2.2 SC 2.5.8 (24 CSS px, the tap floor) and SC 2.5.5 (44 CSS px, only picks the light view)
+  var TAP_MS = 100;                                                              // cite: rail, tap response at most 0.1 s (Nielsen 1993, ch.5); the sky may only vary it below this
+  var WPM = 50;                                                                  // cite: rail, reading pace, grade 2 fall 50th percentile, 50 words a minute (Hasbrouck & Tindal 2017, Table 4)
+  function rem() { return parseFloat(getComputedStyle(document.documentElement).fontSize) || 0; }   // the reader's own text size (browser 1rem), measured
   function rm() { return document.documentElement.getAttribute("data-rm") === "on"; }
+  function quick() { return Math.min(TAP_MS, skyBreath() * MS * Math.pow(IP, 10)); }   // Rule phi quick feedback sky-B x PHI^-10, under the tap rail
+  // hold(text): how long a message stays up = its word count at the reading rail, with the pause rung (sky-B x PHI^-2) as the floor
+  function hold(text) { var w = (String(text).match(/[\w\u2019']+/g) || []).length; return Math.max(w * 60 / WPM, skyBreath() * Math.pow(IP, 2)) * MS; }   // unit: 60 s per minute (words / WPM -> seconds)
   function applyScale() {
     var r = document.documentElement, s = Math.min(W.innerWidth, W.innerHeight, WCAG_MIN * Math.pow(PHI, N_CAP)), b = B() * MS, n = 4;   // step: tap target S x PHI^-4 (Rule phi table)
-    while (s * Math.pow(IP, n) < WCAG_MIN && n > 0) n--;                        // safe side: one phi step bigger until it passes
+    while (s * Math.pow(IP, n) < WCAG_MIN && n > 0) n--;                        // safe side: one phi step bigger until it passes the 24 px floor
     var tapPx = s * Math.pow(IP, n);
     r.setAttribute("data-light", s * Math.pow(IP, 4) < WCAG_AAA ? "on" : "off");  // step: light reduced view when S x PHI^-4 is under 44 px
-    var u = s * Math.pow(IP, 6);                                                 // step: text unit S x PHI^-6
+    var u = Math.max(rem(), s * Math.pow(IP, 6));                                // step: text unit S x PHI^-6, never under the reader's own 1rem
     if (u < tapPx * Math.pow(IP, 2)) u = tapPx * Math.pow(IP, 2);
     r.style.setProperty("--u", u + "px");
     r.style.setProperty("--tap", tapPx + "px");
@@ -96,11 +103,11 @@
       r.style.setProperty("--g" + k, u * Math.pow(PHI, k - 1) + "px");
       r.style.setProperty("--h" + k, u * Math.pow(IP, k) + "px");
     }
-    var q = skyBreath() * MS;                                                    // tap feedback and transitions: sky-B, not the kid-moved B (Steve 26 Oct), so a slow kid's page stays quick
-    r.style.setProperty("--t-quick", (rm() ? 0 : q * Math.pow(IP, 10)) + "ms");  // Rule phi: quick feedback B x PHI^-10
-    r.style.setProperty("--t1", (rm() ? 0 : q * Math.pow(IP, 9)) + "ms");        // Rule phi: transitions B x PHI^-9 / -8 / -7
-    r.style.setProperty("--t2", (rm() ? 0 : q * Math.pow(IP, 8)) + "ms");
-    r.style.setProperty("--t3", (rm() ? 0 : q * Math.pow(IP, 7)) + "ms");
+    var q = rm() ? 0 : quick();                                                  // one live timing; transitions are its phi rungs (were sky-B x PHI^-9/-8/-7, same ratios, now under the rail)
+    r.style.setProperty("--t-quick", q + "ms");
+    r.style.setProperty("--t1", q * PHI + "ms");
+    r.style.setProperty("--t2", q * PHI * PHI + "ms");
+    r.style.setProperty("--t3", q * PHI * PHI * PHI + "ms");
     r.style.setProperty("--breath", b + "ms");
     seasonTint();
   }
@@ -250,6 +257,6 @@
     applyScale: applyScale, dials: dials, rung: rung, weather: weather, unlock: unlock, chime: chime, pitch: pitch, AMP: AMP,
     setSound: function (v) { soundOn = v; if (RC.sound) RC.sound.save(); if (!v && ctx && W.NOTSound && W.NOTSound.quiet) W.NOTSound.quiet(); },
     get sound() { return soundOn; }, get ctx() { return ctx; }, get out() { return out; }, night: night,
-    knob: knob, setKnob: setKnob, skyBreath: skyBreath, liveSky: liveSky, liveB: liveB, reducedMotion: reducedMotion, rm: rm,
+    knob: knob, setKnob: setKnob, hold: hold, quick: quick, RAILS: { TARGET: WCAG_MIN, TAP_MS: TAP_MS, WPM: WPM }, skyBreath: skyBreath, liveSky: liveSky, liveB: liveB, reducedMotion: reducedMotion, rm: rm,
     get wx() { return wx; }, kidGap: kidGap, skyB: skyB };
 })(window);

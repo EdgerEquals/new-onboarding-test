@@ -1,11 +1,14 @@
 /* Every size and timing is a CSS variable set by js/core.js from the measured anchors (S = screen's shorter side, B = breath period)
    as anchor x PHI^n. Literal decimals here are phi values only (1.618 = PHI, .618 = 1/PHI, 2.618 = PHI^2, 4.236 = PHI^3, 6.854 = PHI^4,
    1.236 = 2/PHI, .91 = 1 - PHI^-5, 1.09 = 1 + PHI^-5, .236 = PHI^-3, 38.2% / 61.8% = PHI^-2 / PHI^-1, .382 = PHI^-2 in the free-wheel ease curve), plus 0, 1, 50%, 100%, 360deg (one turn) and z-index order. */
-:root { --bg: #000; --fg: #fff; --surface: #111; --accent: #fff; --warm: 0; --calm: 1; }
+:root { --bg: #000; --fg: #fff; --surface: #111; --accent: #fff; --warm: 0; --calm: 1;
+  --t0: max(1rem, var(--h1));   /* the smallest text: one rung under u, never under the reader's own 1rem (rail) */
+  --orb-stack: calc(var(--tap) * 1.236 + var(--tap) + var(--h2));   /* orb (tap x 1.236) with the look button (tap) stacked on it */
+  --clear: calc(var(--foot, var(--tap)) + var(--g2) + var(--orb-stack) + var(--g1)); }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body { background: var(--bg); color: var(--fg); font: calc(var(--u, 1rem)) / 1.618 system-ui, -apple-system, "Segoe UI", sans-serif;
-  padding-bottom: calc(var(--foot, var(--tap)) + var(--g2) + var(--tap) * 1.236 + var(--g1)); }   /* room for the orb under the last control */
+  padding-bottom: var(--clear); }   /* room for the orb under the last control */
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--bg); filter: sepia(var(--warm)) saturate(var(--calm)); }
 #app { max-width: calc(var(--g5) * 4.236); margin: 0 auto; padding: var(--g2); }
 h1 { font-size: var(--g2); line-height: 1.236; margin: var(--g1) 0 var(--h1); }
@@ -29,7 +32,7 @@ h2 { font-size: var(--u); margin: var(--g1) 0 var(--h2); font-weight: bold; }
 .tile.pick svg { width: var(--tap); height: var(--tap); }
 .tile.pick.on { background: var(--surface); color: var(--fg); outline: calc(var(--h3)) solid var(--fg); outline-offset: calc(var(--h4)); position: relative; }
 .tile.pick.on::after { content: "✓"; position: absolute; top: calc(var(--h2) * -1); right: calc(var(--h2) * -1); background: var(--fg); color: var(--bg);
-  border-radius: 50%; width: var(--g1); height: var(--g1); display: flex; align-items: center; justify-content: center; font-size: var(--h1); font-weight: bold; }
+  border-radius: 50%; width: var(--g1); height: var(--g1); display: flex; align-items: center; justify-content: center; font-size: var(--t0); font-weight: bold; }
 .tile.small { min-height: var(--tap); padding: var(--h3) var(--h1); font-size: var(--u); }
 .tile.warn { border-style: dashed; }
 .dot { width: var(--g1); height: var(--g1); border-radius: 50%; display: inline-block; }
@@ -51,7 +54,7 @@ html[data-rm=on] .m-breathe, html[data-rm=on] .m-spin { animation: none; }
 html[data-rm=on] .lg-layer { transform: none; }
 @media (prefers-reduced-motion: reduce) { .m-breathe, .m-spin { animation: none; } .lg-layer { transform: none; } }
 /* the kid's page */
-.kid-banner { display: flex; align-items: center; gap: var(--g2); padding: var(--g2); background: var(--surface); border-bottom: calc(var(--h3)) solid var(--accent); }
+.kid-banner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g2); padding: var(--g2); background: var(--surface); border-bottom: calc(var(--h3)) solid var(--accent); }
 .kid-banner.b-arch { border-radius: var(--g4) var(--g4) var(--h1) var(--h1); }
 .kid-banner.b-wave { border-radius: var(--g3) var(--h1) var(--g3) var(--h1); }
 .kid-banner.b-zigzag { border-bottom-style: dashed; }
@@ -61,8 +64,8 @@ html[data-rm=on] .lg-layer { transform: none; }
 .banner-prev.b-wave { border-radius: var(--g3) var(--h1) var(--g3) var(--h1); }
 .banner-prev.b-zigzag { border-bottom-style: dashed; }
 .banner-prev.b-ring { border-radius: var(--g4); }
-.logo-btn { width: var(--g4); height: var(--g4); padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; border-radius: 50%; }
-.hi { font-size: var(--g2); font-weight: bold; }
+.logo-btn { flex: none; width: var(--g4); height: var(--g4); padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; border-radius: 50%; }
+.hi { font-size: var(--g2); font-weight: bold; min-width: 0; overflow-wrap: anywhere; }
 .hint { background: var(--accent); color: #000; padding: var(--h1) var(--g1); border-radius: var(--h1); margin: var(--g1) 0; }
 .bot-card { display: flex; align-items: center; gap: var(--g1); margin: var(--g1) 0; padding: var(--h1) var(--g1); border-radius: var(--h1); min-height: var(--tap);
   border: calc(var(--h4)) solid var(--accent); background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
@@ -72,12 +75,12 @@ html[data-rm=on] .lg-layer { transform: none; }
 .build-more { margin-top: var(--g2); }
 .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .618); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
 .sheet { background: var(--bg); color: var(--fg); width: 100%; max-width: calc(var(--g5) * 4.236); max-height: calc(100vh - var(--g3)); overflow: auto; padding: var(--g2);
-  border-radius: var(--g1) var(--g1) 0 0; padding-bottom: calc(var(--foot, var(--tap)) + var(--g2)); }
-textarea.export { width: 100%; height: calc(var(--g5) * 2); font: var(--h1) / 1.618 ui-monospace, monospace; background: var(--surface); color: var(--fg); }
+  border-radius: var(--g1) var(--g1) 0 0; padding-bottom: var(--clear); }
+textarea.export { width: 100%; height: calc(var(--g5) * 2); font: var(--t0) / 1.618 ui-monospace, monospace; background: var(--surface); color: var(--fg); }
 footer.tester { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: var(--h2); align-items: center; justify-content: safe center;
   padding: var(--h2); background: var(--surface); border-top: calc(var(--h4)) solid var(--accent); }
-.stamp { font-size: var(--h1); white-space: nowrap; }
-footer.tester .tile { white-space: nowrap; font-size: var(--h1); padding: var(--h3) var(--h2); }
+.stamp { font-size: var(--t0); text-align: center; }
+footer.tester .tile { white-space: nowrap; font-size: var(--t0); padding: var(--h3) var(--h2); }
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot, var(--tap)) + var(--g1)); background: var(--fg); color: var(--bg); padding: var(--h1) var(--g1);
   border-radius: var(--h1); width: max-content; max-width: calc(100% - var(--g3)); text-align: center; opacity: 0; transition: opacity var(--t2) ease; pointer-events: none; z-index: 30; }
 #toast.on { opacity: 1; }
@@ -87,7 +90,7 @@ html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
 .knob-live { font-size: var(--u); }
 /* review fixes (v0.3) */
 .tile.pick { flex-direction: column; }
-.tile .cap { font-size: var(--h1); }
+.tile .cap { font-size: var(--t0); }
 .tile .tile-art, .tile .tile-logo svg { width: var(--tap); height: var(--tap); display: block; }
 .tile .tile-logo { display: block; color: var(--fg); }
 .mini-banner { display: block; width: calc(var(--tap) * 1.618); height: var(--g1); background: var(--surface); border: calc(var(--h4)) solid var(--accent); border-top: 0; }
@@ -100,9 +103,9 @@ html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
 .dots i { display: block; width: var(--h2); height: var(--h2); border-radius: 50%; background: var(--surface); border: calc(var(--h4)) solid var(--accent); transition: transform var(--t2) ease; }
 .dots i.done { background: var(--accent); }
 .dots i.now { background: var(--fg); transform: scale(1.618); }
-.steps-n { font-size: var(--h1); opacity: .618; }
+.steps-n { font-size: var(--t0); }
 .status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
-.tuning { font-size: var(--h1); font-weight: normal; border: calc(var(--h4)) dashed currentColor; border-radius: var(--h2); padding: 0 var(--h3); margin-left: var(--h2); opacity: .618; }
+.tuning { font-size: var(--t0); font-weight: normal; border: calc(var(--h4)) dashed currentColor; border-radius: var(--h2); padding: 0 var(--h3); margin-left: var(--h2); }
 .sheet h1:focus { outline: none; }
 /* help orb (on from the first screen; the look is the kid's own pick, the function is the same) */
 .help-orb { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--orb-lift, 0px)); z-index: 25; width: calc(var(--tap) * 1.236); height: calc(var(--tap) * 1.236);
@@ -121,7 +124,7 @@ html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
 .help-orb.dragging { cursor: grabbing; opacity: .618; }   /* calming: js/help-orb.js slows the rest motion to PHI^-2 while dragged */
 html[data-rm=on] .help-orb { animation: orb-glow calc(var(--breath) * 1.618) ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .help-orb { animation: orb-glow calc(var(--breath) * 1.618) ease-in-out infinite; } }
-.help-bubble { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618 + var(--orb-lift, 0px)); z-index: 26; max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618));
+.help-bubble { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--orb-stack) + var(--h2) + var(--orb-lift, 0px)); z-index: 26; max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618));
   background: var(--fg); color: var(--bg); padding: var(--h1) var(--g1); border-radius: var(--h1); font-size: var(--u); }
 .help-bubble p { margin: 0 0 var(--h2); }
 .orb-looks { display: flex; flex-wrap: wrap; gap: var(--h2); align-items: center; }
@@ -132,15 +135,17 @@ html[data-rm=on] .help-grow { transform: none; outline: calc(var(--h3)) solid va
 .help-bubble.nudge { pointer-events: none; }
 .help-orb.pulse-once::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; animation: orb-nudge calc(var(--breath) * .618) cubic-bezier(.382, 1, .618, 1) 1 forwards; }
 html[data-rm=on] .help-orb.pulse-once::after { animation: none; }
-.knob-now { margin: 0 0 var(--h2); font-size: var(--h1); }
+.knob-now { margin: 0 0 var(--h2); font-size: var(--t0); }
 .tile.hear { font-size: var(--u); }
 
 /* Steve's v0.3 fixes (26 Oct). Sizes are rungs: 1.236 = 2 x PHI^-2, .618 = PHI^-1, .382 = PHI^-2 */
-.help-bubble.at-top { top: var(--g1); bottom: auto; }
-.orb-look-btn { position: fixed; z-index: 25; right: calc(var(--g1) + var(--tap) * 1.236 - var(--tap) * .382); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * .618 + var(--orb-lift, 0px));
-  width: calc(var(--tap) * .618); height: calc(var(--tap) * .618); min-width: 0; padding: 0; border-radius: 50%; border: 1px solid currentColor;
-  background: var(--surface); font-size: calc(var(--u) * .618); line-height: 1; cursor: pointer; }
-.orb-look-panel { position: fixed; z-index: 27; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618 + var(--orb-lift, 0px));
+.help-bubble.at-top, .orb-look-panel.at-top { top: var(--g1); bottom: auto; }
+/* shrink, don't spill: a floating layer is never taller than the space between the top of the screen and the orb stack, so it can neither leave the top nor cover the orb */
+.help-bubble, .orb-look-panel { max-height: calc(100vh - var(--g1) - var(--h2) - var(--foot, var(--tap)) - var(--g1) - var(--orb-stack) - var(--orb-lift, 0px)); overflow: auto; }
+.orb-look-btn { position: fixed; z-index: 25; right: calc(var(--g1) + (var(--tap) * 1.236 - var(--tap)) / 2); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.236 + var(--h2) + var(--orb-lift, 0px));
+  width: var(--tap); height: var(--tap); min-width: 0; padding: 0; border-radius: 50%; border: 1px solid currentColor;
+  background: var(--surface); font-size: var(--u); line-height: 1; cursor: pointer; }
+.orb-look-panel { position: fixed; z-index: 27; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--orb-stack) + var(--h2) + var(--orb-lift, 0px));
   max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618)); background: var(--surface); border: 1px solid currentColor; border-radius: var(--h1); padding: var(--g1); }
 .orb-look-panel p { margin: 0 0 var(--h2); }
 .top .tile { white-space: nowrap; flex: none; }
@@ -152,4 +157,8 @@ html[data-rm=on] .help-orb.pulse-once::after { animation: none; }
 .tile.warn { outline: 2px solid currentColor; }
 
 /* tester live share notice: sits in the tester bar, so the measured --foot keeps it clear of the page */
-.live-note { flex-basis: 100%; margin: 0; font-size: var(--h1); text-align: center; }
+.live-note { flex-basis: 100%; margin: 0; font-size: var(--t0); text-align: center; }
+
+/* picking a look: the panel sits where the orb stack was, and the orb and its button step aside until a look is picked or the panel closes */
+html.picking .help-orb, html.picking .orb-look-btn { visibility: hidden; }
+html.picking .orb-look-panel { bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--orb-lift, 0px)); max-height: calc(100vh - var(--g1) - var(--h2) - var(--foot, var(--tap)) - var(--g1) - var(--orb-lift, 0px)); }

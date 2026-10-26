@@ -157,3 +157,23 @@ Static. No build step.
 - **Hidden flag:** `LIVE_SHARE_URL` is empty, so the toggle doesn't show and nothing is sent. Set it once Danny's server route is live.
 
 Rollback: tag `pre-live-share-2026-10-26`.
+
+## v0.5: next round fixes and lightening (Danny yes 20:49 AWST, 26 Oct 2026)
+
+What testers will notice:
+- **The logo never gets squeezed.** On narrow phones the greeting wraps under the logo instead of crushing it.
+- **Messages stay up long enough to read.** Toasts, the "Tap again" confirms and the orb's first-screen hint now stay up for as long as a young reader needs for their words (50 words a minute, Hasbrouck & Tindal 2017), with the old short pause as the floor.
+- **Taps feel instant.** Tap feedback and transitions always start within 0.1 s (Nielsen 1993). A double tap on a toggle is caught by the device's own double-tap count, with no timer.
+- **The help orb and its look panel stay on screen.** If the bubble or the 🎨 look panel would go off the top or cover the main button, it moves to the top and shrinks to fit. While you pick a look, the panel takes the orb's place.
+- **The orb keeps clear of controls everywhere**, in sheets too, with one shared "room for the orb" space, and it moves in the same moment the screen changes.
+- **The 🎨 look button is a full tap target**, stacked on the orb.
+- **Small text is easier to read.** The smallest text is never under the browser's own 1rem, and the "still warming up" tag and the step count are no longer faded (contrast 4.5:1).
+
+Danny's decisions in this round:
+- No safety exit on this page. It's unique to Rebella.
+- The tap floor stays at 24 px (WCAG 2.2 SC 2.5.8). It isn't raised to 44.
+- No iPhone system text size (Dynamic Type). The page keeps its own text size.
+
+Sound is unchanged from v0.4 (`js/sound.js` and `js/sound-extras.js` are untouched; sound still starts only after a tap).
+
+Rollback: tag `pre-next-round-2026-10-26` (v0.4, 6043c15).
