@@ -43,6 +43,7 @@
     "mini-logo": "Your logo. It grows as you pick things, until it's yours to change.",
     "callMe-surprise": "Makes up a fun name for you. Tap again for another one.",
     "callMe-keep": "Keeps what you typed. It's your choice.",
+    "live-share": "Tester only. Shares this build live with Danny: your picks and counts, never names or anything typed. Off by default, and it switches off every day.",
     "orb-look": "Changes how I look: an orb, an owl, a car, a moon, or your own emoji or word.",
     "logo-keep-top": "Keeps your logo the way it is and goes on. You can change it any time.",
     "logo-more": "Shows more ways to change your logo: what's in the middle and how it moves.",
@@ -172,5 +173,5 @@
     setTimeout(fade, N.B() * MS); D.addEventListener("pointerdown", fade, { once: true, capture: true });
     setTimeout(function () { orb.classList.remove("pulse-once"); }, N.B() * MS);
   }
-  W.HelpOrb = { calm: calm, paint: paint, drop: drop, helpFor: helpFor, settle: settle, close: closeBubble, look: look };   // drop(el) is the virtual drop for questionnaires
+  W.HelpOrb = { calm: calm, paint: paint, drop: drop, helpFor: helpFor, settle: settle, close: closeBubble, look: look, LOOKS: LOOKS };   // drop(el) is the virtual drop for questionnaires
 })(window, document);

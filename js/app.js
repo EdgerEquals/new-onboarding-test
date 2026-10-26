@@ -6,6 +6,7 @@
   var N = W.NOT, A = W.ART, PHI = N.PHI, IP = N.IP, FIB = N.FIB;
   var BUILD = "v0.4 test build, 2026-10-26 (Deep and Steve fixes)";                                     // label: version stamp
   var FLOW = ["welcome", "name", "botname", "avatar", "colour", "frame", "pattern", "logo", "sections", "page"];
+  var SECTIONS = ["About me", "Things I love", "My bot's corner", "Pictures", "My music"], MOTIONS = ["breathe", "still", "spin"];   // label: section names; logo motions
   var PATH = ["avatar", "colour", "frame", "pattern", "logo", "sections"];      // the kid's own page path (logo step inside it)
   var PRE = PATH.slice(0, PATH.indexOf("logo"));                                 // pieces that feed the logo before the hand-over
   var app = D.getElementById("app"), S;
@@ -18,7 +19,7 @@
   }
   var keepFocus = null;                                                          // keyboard focus stays on the picked tile across a re-render
   // toggles ignore a second tap that lands within the quick-feedback time (sky-B x PHI^-9), so a double tap doesn't flip them back
-  var TOGGLES = /^(sound|motion|tester-more|section:|logo-more)/, lastTap = {};
+  var TOGGLES = /^(sound|motion|tester-more|section:|logo-more|live-share)/, lastTap = {};
   function btn(label, fn, cls, id) { var b = h("button", { type: "button", class: "tile " + (cls || ""), "data-id": id || label, on: { click: function (e) {
       var k = b.getAttribute("data-id"), now = Date.now();
       if (TOGGLES.test(k) && lastTap[k] && now - lastTap[k] < N.skyBreath() * Math.pow(IP, 9) * MSF) return;
@@ -215,7 +216,7 @@
     },
     sections: function () {
       var p = S.page; p.sections = p.sections || [];
-      var opts = ["About me", "Things I love", "My bot's corner", "Pictures", "My music"], pics = { "About me": "🙂", "Things I love": "💛", "My bot's corner": "🤖", "Pictures": "🖼️", "My music": "🎵" };   // label: section names and pictures
+      var opts = SECTIONS, pics = { "About me": "🙂", "Things I love": "💛", "My bot's corner": "🤖", "Pictures": "🖼️", "My music": "🎵" };   // label: section names and pictures
       frame("What goes on your page?", "Pick as many as you like. You can add more later.", [
         h("div", { class: "tiles" }, opts.map(function (o) { var on = p.sections.indexOf(o) >= 0;
           var b = btn(pics[o] + " " + o, function () { if (on) p.sections.splice(p.sections.indexOf(o), 1); else p.sections.push(o); N.log("section", { name: o, on: !on }); render(); }, "pick" + (on ? " on" : ""), "section:" + o);
@@ -255,7 +256,7 @@
       group("Frame", A.FRAMES, L.frame, function (v) { set("frame", v); }, A.frameArt),
       group("Pattern", A.PATTERNS, L.pattern, function (v) { set("pattern", v); }, A.patternArt),
       moreBox([group("Middle", ["my bot", "empty"], L.centre ? "my bot" : "empty", function (v) { L.have.centre = v === "my bot"; set("centre", v === "my bot" ? JSON.parse(JSON.stringify(S.avatar)) : null); }),
-      group("Motion", ["breathe", "still", "spin"], L.motion, function (v) { set("motion", v); }, function (v) { var m = Object.assign({}, live(L), { motion: v }); return h("span", { class: "tile-logo" }, [A.logo(m, L.have, "logo")]); })]),
+      group("Motion", MOTIONS, L.motion, function (v) { set("motion", v); }, function (v) { var m = Object.assign({}, live(L), { motion: v }); return h("span", { class: "tile-logo" }, [A.logo(m, L.have, "logo")]); })]),
       h("div", { class: "row" }, [btn("Back to my start", function () { S.logo.current = JSON.parse(JSON.stringify(S.logo.start)); N.log("logo-revert", { where: where }); N.save(); render(); }, "ghost", "logo-revert"),
         btn(N.sound ? "Hear it" : "Sound is off", function () { N.chime("logo", FIB[4]); }, "ghost", "logo-hear")])]);
   }
@@ -380,7 +381,10 @@
     var more = [btn("🎛 Knobs", function () { N.log("knobs-open"); overlay("knobs"); }, "small", "knobs"), btn("🐞 Bug here", function () { S.bugs++; N.log("bug-mark", { step: S.step, overlay: open }); toast("Marked. It's in the feedback with this screen."); }, "small", "bug"),
       btn(rmOn ? "Motion: less" : "Motion: full", function () { N.reducedMotion(!N.rm()); N.log("reduced-motion", { on: N.rm() }); bar(); }, "small", "motion"),
       (function () { var sb = btn(N.sound ? "Sound: on" : "Sound: off", function () { N.setSound(!N.sound); N.log("sound-toggle", { on: N.sound }); bar(); }, "small", "sound"); sb.appendChild(tuning()); return sb; })()];
+    var LV = W.NOTLive, liveOn = !!(LV && LV.ready && LV.on());
+    if (LV && LV.ready) more.push(btn(liveOn ? "📡 Share with Danny: on" : "📡 Share with Danny: off", function () { LV.set(!LV.on()); }, "small", "live-share"));
     var b = h("footer", { class: "tester" + (barOpen ? " open" : ""), "aria-label": "Tester tools" }, [
+      liveOn ? h("p", { class: "live-note", role: "status", text: "📡 This build is shared live with Danny. Turn it off under More." }) : null,
       h("span", { class: "stamp", text: BUILD }), btn("Copy feedback", copyFeedback, "small", "export"), resetBtn,
       btn(barOpen ? "Less ▴" : "More ▾", function () { barOpen = !barOpen; bar(); }, "small ghost", "tester-more")].concat(barOpen ? more : []));
     var old = D.querySelector("footer.tester"); if (old) old.replaceWith(b); else D.body.appendChild(b);
@@ -427,5 +431,5 @@
   requestAnimationFrame(function () { idleT1(loadSound); });                      // T1: the sound engine loads at idle just after the first paint
   idle(function () { N.weather(); });                                             // tier 2: the weather feed loads at idle
   D.addEventListener("not:resume-tap", function () { toast("Tap anywhere to bring the sound back."); });   // one gentle tap, never a reset
-  W.NOTAPP = { summary: summary, BUILD: BUILD, FLOW: FLOW, go: function (s) { go(s); }, motionSync: motionSync, get motionT0() { return motionT0; } };
+  W.NOTAPP = { summary: summary, BUILD: BUILD, BUILD_ID: BUILD.split(" ")[0], SECTIONS: SECTIONS, MOTIONS: MOTIONS, bar: function () { bar(); }, FLOW: FLOW, go: function (s) { go(s); }, motionSync: motionSync, get motionT0() { return motionT0; } };
 })(window, document);

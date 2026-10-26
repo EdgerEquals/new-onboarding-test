@@ -146,3 +146,14 @@ Static. No build step.
 - The city point is fixed to Perth (shared layer location standard). Whether it should come from where the user is is still open with Danny.
 - "Build more" on the dashboard and the section contents are placeholders.
 - There's no help orb, questionnaire, roll pairs or Dad ping on this test page.
+
+## Tester live share (page side, Danny yes 15:11 AWST, 26 Oct 2026)
+
+`js/live-share.js` has a tester-only "📡 Share with Danny" toggle under More in the tester bar.
+- It is off by default, and switches off at the daily restart and on Start over. While it's on, the tester bar says the build is shared live with Danny.
+- It sends at most once per breath B, and only when something changed.
+- It sends picks, looks and counts only. It never sends names, typed text, location, audio or device IDs.
+- The payload shape is in `not-smoke/live-share-payload.md`.
+- **Hidden flag:** `LIVE_SHARE_URL` is empty, so the toggle doesn't show and nothing is sent. Set it once Danny's server route is live.
+
+Rollback: tag `pre-live-share-2026-10-26`.
