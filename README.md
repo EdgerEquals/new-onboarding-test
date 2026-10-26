@@ -1,12 +1,12 @@
 # New onboarding test page
 
-A test copy of the Kids Club **new-kid onboarding**, so a tester (for example Cody, as a kid or as himself) can run it in a browser, make a bot and a page, and send back what they made plus a bug log. It belongs to no kid. It carries no names, no secrets and no analytics.
+A test copy of the Kids Club **new-kid onboarding**, so a tester (for example Cody, as a kid or as himself) can run it in a browser, make a bot and a page, and send back what they made plus a bug log. It belongs to no kid. It carries no names, no secrets and no analytics. Nothing about you is sent.
 
 Built by Kids Club on Danny's ask (Kids Club chat, 12:52 AWST 26 Oct 2026). It follows the Kids Club shared layer (`/home/box/.config/kids-club/shared.md` on the box) and the adaptive-phi rulebook (rule 12).
 
 ## What it does (v0.1)
 
-1. **Name**: the tester types their name (typed field 1 of 2). It stays on this device and is never in the export.
+1. **What would you like to be called?** (call-me name, typed field 1 of 2) with a kind tip not to use a real name. It stays on this device, is never treated as a real name, and is never in the export.
 2. **Bot name**: typed field 2 of 2.
 3. **Bot avatar**: buttons and tiles only (shape, colour, eyes, extra). The note says a grown-up approves before a real bot uses it.
 4. **Page pieces**: page colour (plus light or dark), banner shape, pattern.
@@ -42,6 +42,23 @@ Kids Club standard "Rhythms keep going while you're away" (Danny 13:48 / 13:51 A
 
 Rollback: tag `pre-continuity-2026-10-26` (v0.1, 7575750).
 
+## v0.3: Steve's review fixes (Danny yes 14:24, 14:27 and 14:29 AWST, 26 Oct 2026)
+
+- **Call-me name** first, with the kind tip; the banner says "Hi <call-me name>!". A v0.1 record's first answer is moved to the call-me name.
+- **Big screens**: the size anchor S is capped at 24 px × φ^6, so the text unit tops out on the 24 px rung (tap target 24 × φ^2). Start stays above the tester bar on first load.
+- **Selected tiles** keep their picture and get an outline and a ✓.
+- **Pictures** on Eyes (face close-up), Extra (top of the head), Banner, Pattern, Frame, Motion and section tiles, with captions.
+- **Copy**: after the hand-over nothing says the logo grows; all-skipped says "starter picks"; a skip shows a kind "starter pick, come back any time" note; welcome says "Nothing about you is sent"; one line says what the bot is and who it talks to.
+- **Logo middle** follows the bot's current look live. **Back** on the final page. **Escape** closes an overlay and focus goes to its heading. Keyboard focus stays on the picked tile.
+- **Shared device**: the Continue screen asks "Is this you?" with "No, I'm someone new" (clears the last person's run).
+- **Progress dots**: step x of the real step count, dot sizes from φ rungs.
+- **Tuning tags** on placeholder controls (knobs: pace, tint, pitch; Sound, which waits on the amplitude matrix).
+- **Help orb** on from the first screen (`js/help-orb.js`): drag it onto anything, or tap it and then tap the thing; that thing grows and says what it does. The kid picks its look (orb, owl, car, moon, or their own emoji or word), saved on this device; every look works the same. Every visible control has help text; placeholders say they're still being tuned.
+- **Stuck alert (test hook)**: the time on a step, counted only while the page is in view, against the kid's own usual time per step; one φ rung slower logs `stuck-alert-test` with the step and what came just before, quiet until the rhythm recovers, and two on one step flag a possible dead end. **Logged locally only: no ntfy, no real ping.**
+- **Bugs**: long-term pace weight φ^-8; B is clamped to sky-B × φ^±k with k the pace dial's live rung (mirrored); the pause limit comes from sky-B; one small aria-live status line instead of the whole page.
+
+Rollback: tag `pre-review-fixes-2026-10-26` (v0.2, 605ba97).
+
 ## How to test
 
 Open the live page (GitHub Pages) in any browser, on a phone or a desktop, and go through it as a kid or as yourself.
@@ -55,7 +72,7 @@ The tester bar at the bottom has:
   - **Motion** switches between full and less motion.
   - **Sound** turns the chimes on or off.
 
-What the export leaves out: the name typed on the first screen, any typed text, and the bot name if it contains that first name.
+What the export leaves out: the call-me name, any typed text, and the bot name if it contains any word of the call-me name (case-insensitive).
 
 ## Reset
 

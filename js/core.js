@@ -20,11 +20,11 @@
   function fibAtMost(n) { var r = 0; for (var i = 1; i < FIB.length; i++) if (FIB[i] <= n) r = i; return r; }   // rung count, Fibonacci steps
 
   // ---------- the one on-device record ----------
-  function blank() { return { v: 1, started: null, step: "welcome", kidName: "", botName: "", avatar: {}, page: {}, done: [],
+  function blank() { return { v: 1, started: null, step: "welcome", callMe: "", botName: "", avatar: {}, page: {}, done: [],
     skipped: [], logo: { start: null, current: null, handoverAt: null, hintShown: false }, usage: {}, gaps: [], longGap: null,
     dials: null, events: [], bugs: 0 }; }
   var S = blank();
-  function load() { try { var o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o && o.v === S.v) S = Object.assign(blank(), o); } catch (e) {} return S; }
+  function load() { try { var o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o && o.v === S.v) { S = Object.assign(blank(), o); if (o.kidName != null) { if (!S.callMe) S.callMe = o.kidName; delete S.kidName; } } } catch (e) {} return S; }   // v0.1 record: its first answer becomes the call-me name
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   function reset() { try { localStorage.removeItem(KEY); } catch (e) {} S = blank(); dials();
     if (typeof nudge !== "undefined") Object.keys(nudge).forEach(function (k) { nudge[k] = 0; });
@@ -60,14 +60,17 @@
     var w = 1 - Math.pow(IP, fibAtMost(S.gaps.length));                         // pump 3 takes over one phi rung per Fibonacci count of gaps
     return Math.exp((1 - w) * Math.log(b) + w * Math.log(g * Math.pow(PHI, N_KID)));
   }
-  function B() { var b = liveB(), n = knobRung("pace"); return n == null ? b : Math.pow(PHI, n); }   // a hand nudge sets B on its rung
+  // B stays within sky-B x PHI^+-k, k = the pace dial's live rung: an excited kid pulls B down to the limit and a slow one up to it,
+  // mirrored (Danny's call, Steve's review 26 Oct). A hand nudge sets B on its own rung inside the same limit.
+  function clampB(b) { var sb = tempB(skyB()), k = dials().pace.k; return Math.max(sb * Math.pow(IP, k), Math.min(sb * Math.pow(PHI, k), b)); }
+  function B() { var n = knobRung("pace"); return clampB(n == null ? liveB() : Math.pow(PHI, n)); }
   var lastTap = null;
   function tap(id) {                                                             // the kid's own rhythm (gaps between taps), and usage counts
     var now = Date.now();
     if (lastTap != null) { var gap = (now - lastTap) / MS;
-      if (gap < B() * Math.pow(PHI, N_KID)) {                                    // a gap longer than this is a pause, not rhythm
+      if (gap < tempB(skyB())) {                                                 // a gap longer than sky-B is a pause, not rhythm (Steve's review)
         S.gaps.push(gap); if (S.gaps.length > FIB[9]) S.gaps.shift();           // fib: rhythm window, 34 gaps
-        S.longGap = S.longGap == null ? gap : S.longGap * (1 - Math.pow(IP, 2)) + gap * Math.pow(IP, 2);
+        S.longGap = S.longGap == null ? gap : S.longGap * (1 - Math.pow(IP, 8)) + gap * Math.pow(IP, 8);   // long-term pace, weight PHI^-8 so this visit can differ
       } }
     lastTap = now;
     if (id) S.usage[id] = (S.usage[id] || 0) + 1;
@@ -76,10 +79,11 @@
   }
 
   // ---------- anchor S: the screen's shorter side; sizes and timings as CSS variables ----------
+  var N_CAP = 6;                                                                 // step: big screens: S capped at 24 px x PHI^6, so the text unit S x PHI^-6 tops out on the 24 px rung
   var WCAG_MIN = 24, WCAG_AAA = 44;                                              // cite: WCAG 2.2 SC 2.5.8 (24 CSS px) and SC 2.5.5 (44 CSS px) target sizes
   function rm() { return document.documentElement.getAttribute("data-rm") === "on"; }
   function applyScale() {
-    var r = document.documentElement, s = Math.min(W.innerWidth, W.innerHeight), b = B() * MS, n = 4;   // step: tap target S x PHI^-4 (Rule phi table)
+    var r = document.documentElement, s = Math.min(W.innerWidth, W.innerHeight, WCAG_MIN * Math.pow(PHI, N_CAP)), b = B() * MS, n = 4;   // step: tap target S x PHI^-4 (Rule phi table)
     while (s * Math.pow(IP, n) < WCAG_MIN && n > 0) n--;                        // safe side: one phi step bigger until it passes
     var tapPx = s * Math.pow(IP, n);
     r.setAttribute("data-light", s * Math.pow(IP, 4) < WCAG_AAA ? "on" : "off");  // step: light reduced view when S x PHI^-4 is under 44 px

@@ -95,5 +95,18 @@
     layer("centre", have.centre && L.centre, function (g) { if (L.centre) { var a = avatar(L.centre, "lg-av"); var k = Math.pow(IP, 2), o = H * (1 - k); a.setAttribute("x", o); a.setAttribute("y", o); a.setAttribute("width", k); a.setAttribute("height", k); g.appendChild(a); } });
     return s;
   }
-  W.ART = { dark: true, hue: hue, hsl: hsl, rgb: rgb, avatar: avatar, logo: logo, SHAPES: SHAPES, EYES: EYES, EXTRAS: EXTRAS, FRAMES: FRAMES, PATTERNS: PATTERNS, HUES: FIB[4] };
+  // ---------- tile pictures (Steve's review: Eyes and Extra clearly distinct; pictures on banner, pattern and motion tiles) ----------
+  function face(eyes, hk) {                                                      // Eyes tiles: a close-up of the face, so only the eyes differ
+    var s = avatar({ shape: "circle", hue: hk, eyes: eyes }, "tile-art"), r = R * IP, w = r * PHI;   // the box hugs the face, a phi share of the body
+    s.setAttribute("viewBox", (H - w / 2) + " " + (H - r * IP) + " " + w + " " + w * IP);
+    return s;
+  }
+  function extraArt(extra, hk) {                                                 // Extra tiles: the top of the head, where extras sit
+    var s = avatar({ shape: "circle", hue: hk, eyes: "dots", extra: extra }, "tile-art"), r = R * IP, w = r * PHI * PHI;
+    s.setAttribute("viewBox", (H - w / 2) + " " + (H - r - r * IP * PHI) + " " + w + " " + w * IP);
+    return s;
+  }
+  function patternArt(kind) { var s = svg("tile-art"), g = el("g", {}); pattern(g, kind, R, "currentColor"); s.appendChild(g); return s; }
+  function frameArt(kind) { var s = svg("tile-art"); s.appendChild(el("path", { d: framePath(kind, R * IP), fill: "none", stroke: "currentColor", "stroke-width": R * Math.pow(IP, FIB[4] - 1) })); return s; }
+  W.ART = { dark: true, face: face, extraArt: extraArt, patternArt: patternArt, frameArt: frameArt, hue: hue, hsl: hsl, rgb: rgb, avatar: avatar, logo: logo, SHAPES: SHAPES, EYES: EYES, EXTRAS: EXTRAS, FRAMES: FRAMES, PATTERNS: PATTERNS, HUES: FIB[4] };
 })(window);

@@ -27,7 +27,9 @@ h2 { font-size: var(--u); margin: var(--g1) 0 var(--h2); font-weight: bold; }
 .tile.ghost { background: transparent; }
 .tile.pick { padding: var(--h3); }
 .tile.pick svg { width: var(--tap); height: var(--tap); }
-.tile.pick.on { background: var(--accent); color: #000; }
+.tile.pick.on { background: var(--surface); color: var(--fg); outline: calc(var(--h3)) solid var(--fg); outline-offset: calc(var(--h4)); position: relative; }
+.tile.pick.on::after { content: "✓"; position: absolute; top: calc(var(--h2) * -1); right: calc(var(--h2) * -1); background: var(--fg); color: var(--bg);
+  border-radius: 50%; width: var(--g1); height: var(--g1); display: flex; align-items: center; justify-content: center; font-size: var(--h1); font-weight: bold; }
 .tile.small { min-height: var(--tap); padding: var(--h3) var(--h1); font-size: var(--u); }
 .tile.warn { border-style: dashed; }
 .dot { width: var(--g1); height: var(--g1); border-radius: 50%; display: inline-block; }
@@ -83,3 +85,38 @@ html[data-light=on] .mini-logo { display: none; }
 html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
 .tile.is-live { border-style: dotted; }
 .knob-live { font-size: var(--u); }
+/* review fixes (v0.3) */
+.tile.pick { flex-direction: column; }
+.tile .cap { font-size: var(--h1); }
+.tile .tile-art, .tile .tile-logo svg { width: var(--tap); height: var(--tap); display: block; }
+.tile .tile-logo { display: block; color: var(--fg); }
+.mini-banner { display: block; width: calc(var(--tap) * 1.618); height: var(--g1); background: var(--surface); border: calc(var(--h4)) solid var(--accent); border-top: 0; }
+.mini-banner.b-arch { border-radius: var(--g1) var(--g1) var(--h3) var(--h3); }
+.mini-banner.b-wave { border-radius: var(--g1) var(--h3) var(--g1) var(--h3); }
+.mini-banner.b-zigzag { border-bottom-style: dashed; }
+.mini-banner.b-ring { border-radius: var(--g1); }
+.steps { flex: 1; display: flex; align-items: center; gap: var(--h2); justify-content: center; }
+.dots { display: flex; gap: var(--h2); align-items: center; }
+.dots i { display: block; width: var(--h2); height: var(--h2); border-radius: 50%; background: var(--surface); border: calc(var(--h4)) solid var(--accent); transition: transform var(--t2) ease; }
+.dots i.done { background: var(--accent); }
+.dots i.now { background: var(--fg); transform: scale(1.618); }
+.steps-n { font-size: var(--h1); opacity: .618; }
+.status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+.tuning { font-size: var(--h1); font-weight: normal; border: calc(var(--h4)) dashed currentColor; border-radius: var(--h2); padding: 0 var(--h3); margin-left: var(--h2); opacity: .618; }
+.sheet h1:focus { outline: none; }
+/* help orb (on from the first screen; the look is the kid's own pick, the function is the same) */
+.help-orb { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1)); z-index: 25; width: calc(var(--tap) * 1.236); height: calc(var(--tap) * 1.236);
+  border-radius: 50%; border: calc(var(--h4)) solid var(--accent); background: var(--surface); color: var(--fg); font-size: var(--g1); cursor: grab; touch-action: none;
+  display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; animation: breathe var(--breath) ease-in-out infinite; }
+.help-orb .orb-face { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; font-size: var(--g1); line-height: 1; }
+.help-orb.armed { outline: calc(var(--h3)) dashed var(--fg); outline-offset: var(--h4); }
+.help-orb.dragging { cursor: grabbing; animation: none; opacity: .618; }
+html[data-rm=on] .help-orb { animation: none; }
+.help-bubble { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618); z-index: 26; max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618));
+  background: var(--fg); color: var(--bg); padding: var(--h1) var(--g1); border-radius: var(--h1); font-size: var(--u); }
+.help-bubble p { margin: 0 0 var(--h2); }
+.orb-looks { display: flex; flex-wrap: wrap; gap: var(--h2); align-items: center; }
+.orb-looks .tile { background: var(--bg); color: var(--fg); }
+.orb-looks input[type=text] { font-size: var(--u); margin: 0; }
+.help-grow { transform: scale(1.236); transition: transform var(--t2) cubic-bezier(.382, 1, .618, 1); position: relative; z-index: 5; }
+html[data-rm=on] .help-grow { transform: none; outline: calc(var(--h3)) solid var(--accent); }
