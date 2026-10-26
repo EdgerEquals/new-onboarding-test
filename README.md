@@ -70,6 +70,16 @@ Rollback: tag `pre-review-fixes-2026-10-26` (v0.2, 605ba97).
 
 Rollback: tag `pre-tester-share-2026-10-26` (v0.3, 5b5d409).
 
+### v0.4 also has Steve's v0.3 test fixes (Danny yes, 26 Oct 2026)
+
+- **Help orb**: the look picker is its own small 🎨 button next to the orb. The help bubble moves to the top if it would cover the main button. Changing the look ends help mode, so the next tap on Start starts. Every screen has room under its last control, and the orb lifts by whole orb-heights when its spot would cover a control.
+- **Top row**: on narrow screens it shows only the dots (the count stays for screen readers), and Back never wraps.
+- **Is this you?**: the question is the heading, the saved logo and bot sit under it, and "No, I'm someone new" needs a second tap ("Tap again: this clears the last page").
+- **Name step**: five fun name tiles to tap. Typing is optional.
+- **Quick for everyone**: tap feedback and transitions follow sky-B, not the kid-moved B. A double tap on a toggle only flips it once.
+- **Logo step**: "Keep it" is at the top too, and Motion and Middle are tucked under "More".
+- **Parent line**: "Your bot is a helper. It only chats with you, and your grown-up can see what it says." (wording waiting on Danny's OK)
+
 ## How to test
 
 Open the live page (GitHub Pages) in any browser, on a phone or a desktop, and go through it as a kid or as yourself.
