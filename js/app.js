@@ -4,7 +4,7 @@
 (function (W, D) {
   "use strict";
   var N = W.NOT, A = W.ART, PHI = N.PHI, IP = N.IP, FIB = N.FIB;
-  var BUILD = "v0.3 test build, 2026-10-26 (review fixes)";                                     // label: version stamp
+  var BUILD = "v0.4 test build, 2026-10-26 (Deep and Steve fixes)";                                     // label: version stamp
   var FLOW = ["welcome", "name", "botname", "avatar", "colour", "frame", "pattern", "logo", "sections", "page"];
   var PATH = ["avatar", "colour", "frame", "pattern", "logo", "sections"];      // the kid's own page path (logo step inside it)
   var PRE = PATH.slice(0, PATH.indexOf("logo"));                                 // pieces that feed the logo before the hand-over
@@ -17,7 +17,12 @@
     return e;
   }
   var keepFocus = null;                                                          // keyboard focus stays on the picked tile across a re-render
-  function btn(label, fn, cls, id) { var b = h("button", { type: "button", class: "tile " + (cls || ""), "data-id": id || label, on: { click: function (e) { keepFocus = b.getAttribute("data-id"); fn(e); } } }, [label]); return b; }
+  // toggles ignore a second tap that lands within the quick-feedback time (sky-B x PHI^-9), so a double tap doesn't flip them back
+  var TOGGLES = /^(sound|motion|tester-more|section:|logo-more)/, lastTap = {};
+  function btn(label, fn, cls, id) { var b = h("button", { type: "button", class: "tile " + (cls || ""), "data-id": id || label, on: { click: function (e) {
+      var k = b.getAttribute("data-id"), now = Date.now();
+      if (TOGGLES.test(k) && lastTap[k] && now - lastTap[k] < N.skyBreath() * Math.pow(IP, 9) * MSF) return;
+      lastTap[k] = now; keepFocus = k; fn(e); } } }, [label]); return b; }
   function refocus() {
     if (keepFocus == null) return false;
     var t = null; D.querySelectorAll("[data-id]").forEach(function (e) { if (!t && e.getAttribute("data-id") === keepFocus) t = e; });
@@ -30,7 +35,7 @@
   function back() { go(FLOW[Math.max(1, FLOW.indexOf(S.step) - 1)]); }
   function done(piece) { if (S.done.indexOf(piece) < 0) S.done.push(piece); var i = S.skipped.indexOf(piece); if (i >= 0) S.skipped.splice(i, 1); N.chime("piece"); N.log("piece-done", { piece: piece }); }
   function skip(piece) { if (S.skipped.indexOf(piece) < 0 && S.done.indexOf(piece) < 0) S.skipped.push(piece); N.log("skip", { piece: piece }); next();
-    toast("That's fine. We'll use a starter pick for now, and you can come back to it any time."); }
+    toast("That's fine. We'll use a starter pick for now. Come back any time to change it."); }
 
   // ---------- page palette (kid's own hue; contrast checked against WCAG AA) ----------
   function palette() {
@@ -78,11 +83,13 @@
     opts = opts || {};
     var i = FLOW.indexOf(S.step) - 1, total = FLOW.length - 2, bar = null;       // steps after the welcome, up to the page (the real step count)
     if (i >= 0 && i < total) {
-      bar = h("div", { class: "steps", "data-id": "steps", role: "img", "aria-label": "Step " + (i + 1) + " of " + total }, [h("span", { class: "dots" }, FLOW.slice(1, -1).map(function (st, k) {
-        return h("i", { class: k < i ? "done" : k === i ? "now" : "" }); })), h("span", { class: "steps-n", text: (i + 1) + " / " + total })]);
+      bar = h("div", { class: "steps", "data-id": "steps", role: "img", "aria-label": "Step " + (i + 1) + " of " + total + (i + 1 === total ? ", the last one" : "") }, [h("span", { class: "dots" }, FLOW.slice(1, -1).map(function (st, k) {
+        return h("i", { class: k < i ? "done" : k === i ? "now" : "" }); })), h("span", { class: "steps-n", text: (i + 1) + " / " + total + (i + 1 === total ? " · last one!" : "") })]);
     }
     var top = h("div", { class: "top" }, [FLOW.indexOf(S.step) > 1 ? btn("← Back", back, "ghost", "back") : h("span"), bar, opts.logo !== false && FLOW.indexOf(S.step) >= FLOW.indexOf("avatar") ? h("div", { class: "mini-logo", "data-id": "mini-logo" }, [logoNow(opts.pending)]) : h("span")]);
     app.replaceChildren(h("section", { class: "screen s-" + S.step }, [top, h("h1", { text: title }), sub ? h("p", { class: "sub", text: sub }) : null].concat(body)));
+    var tr = app.querySelector(".top"); if (tr) { tr.classList.remove("tight"); var sn = tr.querySelector(".steps-n");   // narrow: dots only, when the count would wrap past one line
+      if (tr.scrollWidth > tr.clientWidth || (sn && sn.getBoundingClientRect().height > parseFloat(getComputedStyle(sn).lineHeight) * PHI)) tr.classList.add("tight"); }
     if (!refocus()) { var f = app.querySelector("input,button.tile:not(.ghost)"); if (f) f.focus({ preventScroll: true }); }
   }
   function group(label, items, cur, pick, draw) {
@@ -96,27 +103,78 @@
   }
   function hueDot(k) { return h("span", { class: "dot", style: "background:" + A.hsl(A.hue(k), IP, IP) }); }
   function hues() { var a = []; for (var k = 0; k < A.HUES; k++) a.push(k); return a; }
+  // ---------- light name check on the call-me name (Danny 14:51 AWST): counts only, never the name ----------
+  // "Looks like a real name" = every word is letters only and written like a proper name (a capital then small letters). It's a kind
+  // nudge, never a block: the kid can try again, tap "Surprise me", or keep theirs. Trips, retries, surprise taps and the name step's
+  // pace go into the pace log and the stuck-alert test hook as counts; the typed text never does.
+  var SURPRISE_A = ["Comet", "Pickle", "Zippy", "Moon", "Bubble", "Sparky", "Pebble", "Rocket", "Noodle", "Star", "Mango", "Pixel"];   // label: made-up name parts
+  var SURPRISE_B = ["Fox", "Bean", "Cloud", "Wave", "Moth", "Drop", "Sprout", "Beetle", "Kite", "Comet", "Puddle", "Spark"];         // label: made-up name parts
+  function looksReal(v) { var w = v.split(/\s+/).filter(Boolean); return w.length > 0 && w.every(function (x) { return /^\p{Lu}\p{Ll}+$/u.test(x); }); }
+  function nc() { return S.nameCheck || (S.nameCheck = { trips: 0, retries: 0, surprise: 0, kept: 0, tiles: 0, stepMs: null }); }
   function nameScreen(field, title, sub, next2) {
     var inp = h("input", { type: "text", id: "f-" + field, autocomplete: "off", spellcheck: "false", "aria-label": title, value: S[field] || "" });
-    function ok() { var v = inp.value.trim(); S[field] = v; N.log(field, { given: !!v, length: v.length }); if (v) next2(); else skip(field); }
+    var check = field === "callMe", tripped = false, tripVal = null, enteredAt = Date.now(), kind = h("p", { class: "note name-kind", hidden: "hidden" });
+    var keep = btn("Keep mine", function () { nc().kept++; N.log("name-keep", { kept: nc().kept }); finish(inp.value.trim()); }, "ghost", "callMe-keep");
+    var surp = btn("🎲 Surprise me", function () { var c = nc(); c.surprise++;
+      inp.value = SURPRISE_A[Math.floor(Math.random() * SURPRISE_A.length)] + SURPRISE_B[Math.floor(Math.random() * SURPRISE_B.length)];
+      tripped = false; kind.hidden = true; keep.hidden = true; N.log("name-surprise", { surprise: c.surprise }); inp.focus(); }, "ghost", "callMe-surprise");
+    keep.hidden = true;
+    function finish(v) { S[field] = v; if (check) { nc().stepMs = Date.now() - enteredAt; N.log("name-pace", { ms: nc().stepMs, trips: nc().trips, retries: nc().retries, surprise: nc().surprise }); }
+      N.log(field, { given: !!v, length: v.length }); if (v) next2(); else skip(field); }
+    function ok() {
+      var v = inp.value.trim();
+      if (check && v) {
+        var c = nc();
+        if (tripped && v !== tripVal) { c.retries++; N.log("name-retry", { retries: c.retries }); }
+        if (looksReal(v)) { c.trips++; tripped = true; tripVal = v; kind.hidden = false; keep.hidden = false;
+          kind.textContent = "That looks like a real name. Try a made-up one!"; N.log("name-check", { trip: true, trips: c.trips }); say(kind.textContent); inp.focus(); return; }
+      }
+      finish(v);
+    }
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") ok(); });
-    frame(title, sub, [inp, h("div", { class: "row" }, [btn("Next →", ok, "primary", field + "-next"), btn("Skip for now", function () { skip(field); }, "ghost", field + "-skip")])]);
+    var tiles = null;
+    if (check) {                                                                  // a few fun names to tap; typing is optional
+      var seed = S.nameSeed == null ? (S.nameSeed = Math.floor(Math.random() * SURPRISE_A.length)) : S.nameSeed, picks = [];
+      for (var t = 0; t < FIB[4]; t++) picks.push(SURPRISE_A[(seed + t) % SURPRISE_A.length] + SURPRISE_B[(seed + t * FIB[3]) % SURPRISE_B.length]);   // fib: five tiles, spread by 3
+      tiles = h("div", { class: "group" }, [h("h2", { text: "Or tap a fun name" }), h("div", { class: "tiles" }, picks.map(function (nm, i) {
+        return btn(nm, function () { nc().tiles = (nc().tiles || 0) + 1; N.log("name-tile", { tiles: nc().tiles }); inp.value = nm; finish(nm); }, "pick", "name-tile:" + i); }))]);
+    }
+    frame(title, sub, [inp, check ? kind : null, tiles, h("div", { class: "row" }, [btn("Next →", ok, "primary", field + "-next"), check ? surp : null, check ? keep : null,
+      btn("Skip for now", function () { skip(field); }, "ghost", field + "-skip")])]);
   }
 
+  var WHERE = { name: "picking what to call you", botname: "naming your bot", avatar: "making your bot's look", colour: "picking your page colour",
+    frame: "picking a banner", pattern: "picking a pattern", logo: "your logo", sections: "picking what goes on your page", page: "your finished page" };   // label: friendly step names
+  // ---------- tap to hear: a friendly moment before the first sound (sound only after the first tap) ----------
+  function hearBtn() {
+    if (S.heard) return null;
+    return btn("🔊 Tap to hear", function () { N.unlock(); S.heard = true; N.save(); var t0 = function () { N.chime("piece"); };
+      if (W.NOTSound) t0(); else { var tries = 0, wait = function () { if (W.NOTSound) t0(); else if (tries++ < FIB[6]) setTimeout(wait, N.B() * Math.pow(IP, FIB[6]) * MSF); }; wait(); }   // fib: a few short waits for the engine
+      N.log("tap-to-hear"); render(); }, "ghost hear", "hear");
+  }
+  // "No, I'm someone new" needs a second tap, and says what it clears first
+  var newArmed = 0;
+  function newKidBtn() {
+    var b = btn(newArmed ? "Tap again: this clears the last page" : "No, I'm someone new", function () {
+      if (newArmed) { clearTimeout(newArmed); newArmed = 0; startOver(); return; }
+      newArmed = setTimeout(function () { newArmed = 0; render(); }, N.skyBreath() * Math.pow(IP, 2) * MSF); N.log("new-kid-armed"); render(); }, newArmed ? "ghost warn" : "ghost", "start-over-welcome");
+    return b;
+  }
   // ---------- screens ----------
   var screens = {
     welcome: function () {
-      var body = [h("p", { class: "note", text: "This is a test page. Everything you make stays on this device. Nothing about you is sent." })];
       if (S.started && S.resumeTo) {                                             // shared device: check it's the same kid before carrying on
-        body.push(h("p", { class: "sub", text: S.callMe ? "Is this you, " + S.callMe + "?" : "Is this you, carrying on from last time?" }));
-        body.push(h("div", { class: "row" }, [btn("Yes, carry on", function () { go(S.resumeTo); }, "primary", "continue"), btn("No, I'm someone new", startOver, "ghost", "start-over-welcome")]));
+        var who = h("div", { class: "who" }, [S.logo.current ? h("div", { class: "who-logo" }, [logoNow()]) : null, S.done.indexOf("avatar") >= 0 ? h("div", { class: "who-bot" }, [A.avatar(S.avatar)]) : null]);
+        frame(S.callMe ? "Is this you, " + S.callMe + "?" : "Is this you?", "Welcome back! You were here: " + (WHERE[S.resumeTo] || "building your page") + ".", [who,
+          h("div", { class: "row" }, [btn("Yes, carry on", function () { go(S.resumeTo); }, "primary", "continue"), newKidBtn()])], { logo: false });
+        say("Welcome back."); return;
       }
-      else body.push(btn("Start", function () { S.started = new Date().toISOString(); N.log("start"); next(); }, "primary", "start"));
-      frame("Let's build your own page", S.logo.current ? "Welcome back. Your logo is yours now. Tap it any time to change it." : "First your bot, then your page. Your logo builds itself as you go.", body, { logo: false });
-      if (S.started && S.resumeTo) say("Welcome back.");
+      frame("Let's build your own page", "First your bot, then your page. Your logo builds itself as you go.", [
+        h("p", { class: "note", text: "This is a test page. Everything you make stays on this device. Nothing about you is sent." }),
+        h("div", { class: "row" }, [btn("Start", function () { S.started = new Date().toISOString(); N.log("start"); next(); }, "primary", "start"), hearBtn()])], { logo: false });
     },
     name: function () { nameScreen("callMe", "What would you like to be called?", "💡 Kind tip: we recommend not using your real name. A nickname or a fun word is perfect. It stays on this device.", next); },
-    botname: function () { nameScreen("botName", "What will you call your bot?", "Your bot is a helper that chats with you. It only talks with you and your grown-up, never with strangers. Pick any name you like.", function () { done("botname"); next(); }); },
+    botname: function () { nameScreen("botName", "What will you call your bot?", "Your bot is a helper. It only chats with you, and your grown-up can see what it says. Pick any name you like.", function () { done("botname"); next(); }); },
     avatar: function () {
       var a = S.avatar, prev = h("div", { class: "av-prev" }, [A.avatar(a)]);
       function set(k, v) { a[k] = v; N.log("avatar-pick", { part: k, value: v }); N.chime("tile", FIB[1]); render(); }
@@ -151,7 +209,8 @@
     logo: function () {
       handover();
       var picked = PRE.some(function (pc) { return S.done.indexOf(pc) >= 0; });
-      frame("Now it's your logo", (picked ? "It built itself from what you picked." : "It starts from starter picks, because you skipped the pieces so far. That's fine.") + " From here it only changes when you change it.", [editor("logo-step"),
+      frame("Now it's your logo", (picked ? "It built itself from what you picked." : "It starts from starter picks, because you skipped the pieces so far. That's fine.") + " From here it only changes when you change it.", [
+        h("div", { class: "row top-keep" }, [btn("Keep it →", function () { done("logo"); next(); }, "primary", "logo-keep-top")]), editor("logo-step"),
         h("div", { class: "row" }, [btn("Keep it →", function () { done("logo"); next(); }, "primary", "logo-keep")])], { logo: false });
     },
     sections: function () {
@@ -182,6 +241,12 @@
   };
 
   // ---------- the logo editor (buttons and tiles, no settings boxes) ----------
+  var moreOpen = false;
+  function moreBox(kids) {                                                       // Motion and Middle tucked under "More"
+    var b = btn(moreOpen ? "Less ▴" : "More ▾", function () { moreOpen = !moreOpen; render(); }, "ghost small", "logo-more");
+    b.setAttribute("aria-expanded", moreOpen ? "true" : "false");
+    return h("div", { class: "more-box" }, [b].concat(moreOpen ? kids : []));
+  }
   function editor(where) {
     var L = S.logo.current;
     function set(k, v) { L[k] = v; N.log("logo-change", { part: k, value: v, where: where }); N.chime("logo", FIB[2]); N.save(); render(); }
@@ -189,8 +254,8 @@
       group("Colour", hues(), L.hue, function (v) { set("hue", v); }, hueDot),
       group("Frame", A.FRAMES, L.frame, function (v) { set("frame", v); }, A.frameArt),
       group("Pattern", A.PATTERNS, L.pattern, function (v) { set("pattern", v); }, A.patternArt),
-      group("Middle", ["my bot", "empty"], L.centre ? "my bot" : "empty", function (v) { L.have.centre = v === "my bot"; set("centre", v === "my bot" ? JSON.parse(JSON.stringify(S.avatar)) : null); }),
-      group("Motion", ["breathe", "still", "spin"], L.motion, function (v) { set("motion", v); }, function (v) { var m = Object.assign({}, live(L), { motion: v }); return h("span", { class: "tile-logo" }, [A.logo(m, L.have, "logo")]); }),
+      moreBox([group("Middle", ["my bot", "empty"], L.centre ? "my bot" : "empty", function (v) { L.have.centre = v === "my bot"; set("centre", v === "my bot" ? JSON.parse(JSON.stringify(S.avatar)) : null); }),
+      group("Motion", ["breathe", "still", "spin"], L.motion, function (v) { set("motion", v); }, function (v) { var m = Object.assign({}, live(L), { motion: v }); return h("span", { class: "tile-logo" }, [A.logo(m, L.have, "logo")]); })]),
       h("div", { class: "row" }, [btn("Back to my start", function () { S.logo.current = JSON.parse(JSON.stringify(S.logo.start)); N.log("logo-revert", { where: where }); N.save(); render(); }, "ghost", "logo-revert"),
         btn(N.sound ? "Hear it" : "Sound is off", function () { N.chime("logo", FIB[4]); }, "ghost", "logo-hear")])]);
   }
@@ -230,7 +295,7 @@
   // ---------- logo motion keeps going (continuity): its phase is a function of time, t = now - t0 ----------
   // Every render draws a fresh logo whose CSS animation would start at zero; instead each one is set to the shared phase, which is
   // saved on the device, carried through reloads and returns, and restarts with the daily restart.
-  var MOTION = ["breathe", "spin"], motionT0 = Date.now();
+  var MOTION = ["breathe", "spin", "orb-breathe", "orb-bob", "orb-glow"], motionT0 = Date.now();
   function motionSync() {
     if (!D.getAnimations) return;
     var e = Date.now() - motionT0;
@@ -243,7 +308,7 @@
   // ---------- knobs: open at the live pump values (Kids Club "settings open live", Danny 13:51 AWST) ----------
   var KNOBS = [["pace", "Pace (your rhythm)"], ["tint", "Sky tint (season)"], ["pitch", "Pitch (sky and weather)"]];
   var PCT = 100, TURN = 360;                                                     // unit: per cent; degrees per turn
-  function tuning() { return h("span", { class: "tuning", title: "These ratios are placeholders waiting on Danny's decision." , text: "tuning" }); }   // label: placeholder tag
+  function tuning() { return h("span", { class: "tuning", title: "These ratios are placeholders waiting on Danny's decision.", text: "still warming up" }); }   // label: placeholder tag
   function knobLabel(k, n) {
     if (k === "pace") return "breath " + Math.round(Math.pow(PHI, n)) + " s";
     if (k === "pitch") return n < 0 ? "lower" : n > 0 ? "higher" : "middle";
@@ -253,7 +318,7 @@
     var wrap = h("div", { class: "knobs" }), live = h("p", { class: "sub knob-live" });
     KNOBS.forEach(function (kk) {
       var k = kk[0], st = N.knob(k);
-      wrap.appendChild(h("div", { class: "group" }, [h("h2", {}, [kk[1], tuning()]), h("div", { class: "tiles", "data-knob": k }, st.ladder.map(function (n) {
+      wrap.appendChild(h("div", { class: "group" }, [h("h2", {}, [kk[1], tuning()]), h("p", { class: "knob-now", "data-knob-now": k }), h("div", { class: "tiles", "data-knob": k }, st.ladder.map(function (n) {
         var b = btn(knobLabel(k, n), function () { N.setKnob(k, n); knobsSync(); }, "pick", "knob:" + k + ":" + n);
         b.setAttribute("data-rung", n); return b; }))]));
     });
@@ -264,7 +329,9 @@
     KNOBS.forEach(function (kk) { var k = kk[0], st = N.knob(k);
       o.querySelectorAll('[data-knob="' + k + '"] .tile').forEach(function (b) { var n = +b.getAttribute("data-rung");
         b.classList.toggle("on", n === st.eff); b.setAttribute("aria-pressed", n === st.eff ? "true" : "false");
-        b.classList.toggle("is-live", n === st.live); b.title = n === st.live ? "live now" : ""; }); });
+        b.classList.toggle("is-live", n === st.live); b.title = n === st.live ? "live now" : ""; });
+      var now = o.querySelector('[data-knob-now="' + k + '"]');
+      if (now) now.textContent = "Now: " + knobLabel(k, st.eff) + (st.nudge ? " (your nudge, " + (st.nudge > 0 ? "+" : "") + st.nudge + " from live " + knobLabel(k, st.live) + ")" : " (live)"); });
     var z = N.liveSky(), l = o.querySelector(".knob-live");
     if (l) l.textContent = "Live now: sun " + (z.sun == null ? "?" : Math.round(z.sun) + "°") + ", moon " + (z.moonLit == null ? "?" : Math.round(z.moonLit * PCT) + "% lit") +
       ", season " + (z.season == null ? "?" : Math.round(z.season * TURN) + "°") + ", weather " + (z.weather == null ? "not in yet" : Math.round(z.weather * PCT) + "% of today's range") +
@@ -276,7 +343,7 @@
   // ---------- tester bar: build stamp, bug mark, feedback export, less motion, sound, start over ----------
   var armed = null, barOpen = false;
   function startOver() { N.log("reset"); N.reset(); S = N.S; motionT0 = Date.now(); open = null; var o = D.querySelector(".overlay"); if (o) o.remove(); S.step = "welcome"; if (W.HelpOrb) W.HelpOrb.paint(); render(); toast("Started over. Everything from the last run is cleared."); }
-  function toast(t) { say(t); var e = D.getElementById("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove("on"); }, N.B() * Math.pow(IP, 2) * MSF); }
+  function toast(t) { say(t); var e = D.getElementById("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove("on"); }, N.skyBreath() * Math.pow(IP, 2) * MSF); }
   var MSF = 1000;                                                                // unit: ms per second
   function summary() {
     var words = (S.callMe || "").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean), bn = S.botName || "", bl = bn.toLowerCase();
@@ -292,7 +359,7 @@
       anchors: { B_seconds: N.B(), skyB_seconds: N.skyB(), kidGapMedian: N.kidGap(), gaps: S.gaps.length, weather: N.wx ? { pos: N.wx.pos, U: N.wx.U } : null },
       pitch: N.S && N.pitch(), amplitudeMatrix: N.AMP.defined ? "defined" : "TODO (not yet defined; placeholder share used)",
       continuity: W.RhythmContinuity ? W.RhythmContinuity.info() : null, knobs: { pace: N.knob("pace"), tint: N.knob("tint"), pitch: N.knob("pitch") },
-      tapToSound: S.lastTapToSound || null, stuckTest: S.stuck || {}, soundBridged: !!(W.NOTSoundExtras && W.NOTSoundExtras.bridged),
+      tapToSound: S.lastTapToSound || null, stuckTest: S.stuck || {}, nameCheck: S.nameCheck || null, soundBridged: !!(W.NOTSoundExtras && W.NOTSoundExtras.bridged),
       dials: S.dials, usage: S.usage, bugMarks: S.bugs, events: S.events };
   }
   function copyFeedback() {
@@ -309,7 +376,7 @@
   }
   function bar() {
     var rmOn = N.rm();
-    var resetBtn = btn(armed ? "Tap again to start over" : "Start over", function () { if (armed) { clearTimeout(armed); armed = null; startOver(); bar(); return; } armed = setTimeout(function () { armed = null; bar(); }, N.B() * MSF * Math.pow(IP, 2)); bar(); }, "small warn", "reset");
+    var resetBtn = btn(armed ? "Tap again to start over" : "Start over", function () { if (armed) { clearTimeout(armed); armed = null; startOver(); bar(); return; } armed = setTimeout(function () { armed = null; bar(); }, N.skyBreath() * MSF * Math.pow(IP, 2)); bar(); }, "small warn", "reset");
     var more = [btn("🎛 Knobs", function () { N.log("knobs-open"); overlay("knobs"); }, "small", "knobs"), btn("🐞 Bug here", function () { S.bugs++; N.log("bug-mark", { step: S.step, overlay: open }); toast("Marked. It's in the feedback with this screen."); }, "small", "bug"),
       btn(rmOn ? "Motion: less" : "Motion: full", function () { N.reducedMotion(!N.rm()); N.log("reduced-motion", { on: N.rm() }); bar(); }, "small", "motion"),
       (function () { var sb = btn(N.sound ? "Sound: on" : "Sound: off", function () { N.setSound(!N.sound); N.log("sound-toggle", { on: N.sound }); bar(); }, "small", "sound"); sb.appendChild(tuning()); return sb; })()];
@@ -336,7 +403,7 @@
     if (!alerted && S.stepDwell != null && S.step !== "welcome" && S.step !== "page" && dwell >= S.stepDwell * PHI) {
       alerted = true; S.stuck = S.stuck || {}; S.stuck[S.step] = (S.stuck[S.step] || 0) + 1;
       var last = S.events.length ? S.events[S.events.length - 1].ev : null;
-      N.log("stuck-alert-test", { step: S.step, before: last, count: S.stuck[S.step], deadEnd: S.stuck[S.step] >= FIB[2], ping: "test hook only, not sent" });   // fib: two or more on one step = a cluster
+      N.log("stuck-alert-test", { step: S.step, before: last, count: S.stuck[S.step], nameCheck: S.step === "name" && S.nameCheck ? { trips: S.nameCheck.trips, retries: S.nameCheck.retries, surprise: S.nameCheck.surprise } : undefined, deadEnd: S.stuck[S.step] >= FIB[2], ping: "test hook only, not sent" });   // fib: two or more on one step = a cluster
     }
     setTimeout(stuckCheck, N.B() * MSF);                                         // checked once per breath B
   }
@@ -360,5 +427,5 @@
   requestAnimationFrame(function () { idleT1(loadSound); });                      // T1: the sound engine loads at idle just after the first paint
   idle(function () { N.weather(); });                                             // tier 2: the weather feed loads at idle
   D.addEventListener("not:resume-tap", function () { toast("Tap anywhere to bring the sound back."); });   // one gentle tap, never a reset
-  W.NOTAPP = { summary: summary, BUILD: BUILD, motionSync: motionSync, get motionT0() { return motionT0; } };
+  W.NOTAPP = { summary: summary, BUILD: BUILD, FLOW: FLOW, go: function (s) { go(s); }, motionSync: motionSync, get motionT0() { return motionT0; } };
 })(window, document);

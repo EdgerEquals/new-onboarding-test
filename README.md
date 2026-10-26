@@ -59,6 +59,17 @@ Rollback: tag `pre-continuity-2026-10-26` (v0.1, 7575750).
 
 Rollback: tag `pre-review-fixes-2026-10-26` (v0.2, 605ba97).
 
+## v0.4: Deep's second read + a gently alive help orb (Danny yes 14:47 AWST, 26 Oct 2026)
+
+- Placeholder tags now say **"still warming up"**. The skip note says **"Come back any time"**. The last step says **"last one!"**.
+- Resume says **"Welcome back! You were here: …"** with the step in plain words.
+- A friendly **"🔊 Tap to hear"** on the first screen, before any sound (sound still only after a tap).
+- **One-time orb nudge** on the first screen: "Drag me onto anything to ask what it does", with one gentle pulse. Taps pass straight through it.
+- **Knob labels**: each knob shows "Now: …", live or with your nudge.
+- **Help orb always gently alive** (looked at Rebella's orb for its look: a soft sphere with a white rim and shadow): it breathes at B × φ^-2 and bobs at B × φ^-3 (a golden ratio apart) on the free-wheel ease, in every look. While dragged, it calms to φ^-2 speed with no jump, then glides back. With reduced motion it keeps only a soft breathing glow. Its phase carries through reloads like the logo's.
+
+Rollback: tag `pre-tester-share-2026-10-26` (v0.3, 5b5d409).
+
 ## How to test
 
 Open the live page (GitHub Pages) in any browser, on a phone or a desktop, and go through it as a kid or as yourself.

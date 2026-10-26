@@ -5,9 +5,9 @@
    being tuned. Sizes come from the page's own text unit as phi rungs (CSS), timings from B. No network, nothing leaves the device. */
 (function (W, D) {
   "use strict";
-  var N = W.NOT, PHI = N.PHI, IP = N.IP, MS = 1000;                               // unit: ms per second
+  var N = W.NOT, PHI = N.PHI, IP = N.IP, FIB = N.FIB, MS = 1000;                               // unit: ms per second
   var LOOKS = [["orb", "🔮"], ["owl", "🦉"], ["car", "🚗"], ["moon", "🌙"]];       // label: the starter looks
-  var TUNING = " This one is still being tuned, so it may change.";              // label: placeholder note
+  var TUNING = " This one is still warming up, so it may change.";              // label: placeholder note
   function look() { var L = N.S.orbLook; return L && L.text ? L.text : "🔮"; }
   // ---------- help text for every control (by data-help, or by data-id) ----------
   var EXACT = {
@@ -41,6 +41,12 @@
     "f-botName": "Type a name for your bot.", "f-botName-edit": "Type a new name for your bot.",
     "steps": "How far along you are. Each dot is one step.",
     "mini-logo": "Your logo. It grows as you pick things, until it's yours to change.",
+    "callMe-surprise": "Makes up a fun name for you. Tap again for another one.",
+    "callMe-keep": "Keeps what you typed. It's your choice.",
+    "orb-look": "Changes how I look: an orb, an owl, a car, a moon, or your own emoji or word.",
+    "logo-keep-top": "Keeps your logo the way it is and goes on. You can change it any time.",
+    "logo-more": "Shows more ways to change your logo: what's in the middle and how it moves.",
+    "hear": "Turns on the page's little sounds. They play when you pick things.",
     "orb": "That's me! Drag me onto anything, or tap me and then tap the thing, and I'll explain it."
   };
   var PREFIX = [
@@ -52,7 +58,7 @@
     ["knob:pace:", "Sets how quick the page's rhythm feels. The dotted one is live right now." + TUNING],
     ["knob:tint:", "Sets how strongly the season tints the background. The dotted one is live right now." + TUNING],
     ["knob:pitch:", "Sets how high or low the sounds are. The dotted one is live right now." + TUNING],
-    ["look:", "Changes how I look. I work the same in every look."]
+    ["look:", "Changes how I look. I work the same in every look."], ["name-tile:", "Picks this fun name for you. You can change it later."]
   ];
   function helpFor(el) {
     var t = el.getAttribute("data-help"); if (t) return t;
@@ -61,7 +67,7 @@
     return null;
   }
   function targetAt(el) {
-    while (el && el !== D.body) { if (el.nodeType === 1 && !orb.contains(el) && !bubble.contains(el) && helpFor(el)) return el; el = el.parentNode; }
+    while (el && el !== D.body) { if (el.nodeType === 1 && !mine(el) && helpFor(el)) return el; el = el.parentNode; }
     return null;
   }
   // ---------- the orb and its bubble ----------
@@ -69,12 +75,22 @@
   orb.setAttribute("aria-label", "Help. Drag me onto anything, or tap me and then tap the thing.");
   var face = D.createElement("span"); face.className = "orb-face"; orb.appendChild(face);
   var bubble = D.createElement("div"); bubble.className = "help-bubble"; bubble.setAttribute("role", "status"); bubble.hidden = true;
-  D.body.appendChild(orb); D.body.appendChild(bubble);
+  // the look picker is its own small control beside the orb (Steve 26 Oct), not part of the help bubble
+  var lookBtn = D.createElement("button"); lookBtn.type = "button"; lookBtn.className = "orb-look-btn"; lookBtn.setAttribute("data-id", "orb-look"); lookBtn.textContent = "🎨";
+  lookBtn.setAttribute("aria-label", "Change how the help orb looks"); lookBtn.setAttribute("aria-expanded", "false");
+  var panel = D.createElement("div"); panel.className = "orb-look-panel"; panel.hidden = true;
+  D.body.appendChild(orb); D.body.appendChild(bubble); D.body.appendChild(lookBtn); D.body.appendChild(panel);
+  function mine(el) { return orb.contains(el) || bubble.contains(el) || lookBtn.contains(el) || panel.contains(el); }
   function paint() { face.textContent = look(); }
   var grown = null, armed = false;
   function settle() { if (grown) grown.classList.remove("help-grow"); grown = null; }
   function closeBubble() { bubble.hidden = true; armed = false; orb.classList.remove("armed"); settle(); }
-  function show(nodes) { bubble.replaceChildren.apply(bubble, nodes); bubble.hidden = false; }
+  function hit(a, b) { return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom); }
+  function show(nodes) {                                                         // the bubble keeps clear of the screen's main button
+    bubble.replaceChildren.apply(bubble, nodes); bubble.classList.remove("at-top"); bubble.hidden = false;
+    var r = bubble.getBoundingClientRect();
+    D.querySelectorAll(".screen .tile.primary, .sheet .tile.primary").forEach(function (m) { if (m.offsetParent !== null && hit(r, m.getBoundingClientRect())) bubble.classList.add("at-top"); });
+  }
   function p(text) { var e = D.createElement("p"); e.textContent = text; return e; }
   function drop(el) {                                                            // the one drop handler (every look, real or virtual drop)
     settle(); if (!el) { show([p("Drop me right on a button or a tile, and I'll explain it.")]); return; }
@@ -90,35 +106,71 @@
     inp.addEventListener("change", function () { var v = inp.value.trim(); if (v) setLook(v, "own"); });
     row.appendChild(inp); return row;
   }
-  function setLook(text, kind) { N.S.orbLook = { text: text, kind: kind }; N.save(); paint(); N.log("orb-look", { kind: kind }); show([p("That's my new look. I still work the same.")]); }
+  function setLook(text, kind) {                                                 // a look change ends help mode, so the next tap on Start starts
+    N.S.orbLook = { text: text, kind: kind }; N.save(); paint(); N.log("orb-look", { kind: kind });
+    closePanel(); closeBubble(); armed = false; orb.classList.remove("armed");
+  }
+  function closePanel() { panel.hidden = true; lookBtn.setAttribute("aria-expanded", "false"); }
+  lookBtn.addEventListener("click", function (e) { e.stopPropagation(); closeBubble();
+    if (panel.hidden) { panel.replaceChildren(p("Pick my look. I work the same in every look."), lookPicker()); panel.hidden = false; lookBtn.setAttribute("aria-expanded", "true"); }
+    else closePanel(); });
   function openHelp() {
-    armed = true; orb.classList.add("armed");
-    show([p("Tap anything and I'll explain it. Or drag me onto it."), p("Change my look:"), lookPicker()]);
+    bubble.classList.remove("nudge"); closePanel(); armed = true; orb.classList.add("armed");
+    show([p("Tap anything and I'll explain it. Or drag me onto it.")]);
   }
   // tap the orb = arm help (next tap explains); drag the orb = drop it where it lands
   var start = null, moved = false, ghost = null;
   orb.addEventListener("pointerdown", function (e) { start = { x: e.clientX, y: e.clientY }; moved = false; try { orb.setPointerCapture(e.pointerId); } catch (er) {} });
   orb.addEventListener("pointermove", function (e) {
     if (!start) return; var dx = e.clientX - start.x, dy = e.clientY - start.y, r = orb.offsetWidth * IP;   // a drag starts past PHI^-1 of the orb's own size
-    if (!moved && Math.sqrt(dx * dx + dy * dy) > r) { moved = true; orb.classList.add("dragging"); }
+    if (!moved && Math.sqrt(dx * dx + dy * dy) > r) { moved = true; orb.classList.add("dragging"); calm(Math.pow(IP, 2)); }
     if (moved) orb.style.transform = "translate(" + dx + "px," + dy + "px)";
   });
+  function calm(rate) {                                                          // the rest motion glides to a calmer rate (phase kept), and back
+    if (!orb.getAnimations) return;
+    orb.getAnimations().forEach(function (a) { try { if (a.updatePlaybackRate) a.updatePlaybackRate(rate); else a.playbackRate = rate; } catch (er) {} });
+  }
   function endDrag(e) {
-    if (!start) return; var wasDrag = moved; start = null; orb.classList.remove("dragging"); orb.style.transform = "";
+    if (!start) return; var wasDrag = moved; start = null; orb.classList.remove("dragging"); orb.style.transform = ""; calm(1);
     if (!wasDrag) { if (bubble.hidden || !armed) openHelp(); else closeBubble(); return; }
     orb.style.visibility = "hidden"; var under = D.elementFromPoint(e.clientX, e.clientY); orb.style.visibility = "";
     armed = false; orb.classList.remove("armed"); drop(targetAt(under));
   }
   orb.addEventListener("pointerup", endDrag);
-  orb.addEventListener("pointercancel", function () { start = null; moved = false; orb.classList.remove("dragging"); orb.style.transform = ""; });
+  orb.addEventListener("pointercancel", function () { start = null; moved = false; orb.classList.remove("dragging"); orb.style.transform = ""; calm(1); });
   orb.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (bubble.hidden || !armed) openHelp(); else closeBubble(); } });
   // armed: the next tap on a control is explained instead of pressed
   D.addEventListener("click", function (e) {
-    if (orb.contains(e.target) || bubble.contains(e.target)) return;
+    if (mine(e.target)) return;
+    if (!panel.hidden) closePanel();
     if (armed) { var t = targetAt(e.target); if (t) { e.preventDefault(); e.stopPropagation(); armed = false; orb.classList.remove("armed"); drop(t); return; } }
     if (!bubble.hidden) closeBubble();
   }, true);
-  D.addEventListener("keydown", function (e) { if (e.key === "Escape" && !bubble.hidden) closeBubble(); });
+  D.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (!bubble.hidden) closeBubble(); if (!panel.hidden) closePanel(); } });
+  // the orb never sits on a control: if its home spot covers one, it lifts by whole orb-heights until it is clear
+  function controls() { return [].filter.call(D.querySelectorAll("button, input, a, [data-id]"), function (c) { return !mine(c) && !c.closest("footer.tester") && c.offsetParent !== null; }); }
+  function dodge() {
+    var R = D.documentElement.style, step = orb.offsetHeight + lookBtn.offsetHeight * IP, cs = controls(), best = 0;
+    R.setProperty("--orb-lift", "0px");
+    var base = orb.getBoundingClientRect(), lb = lookBtn.getBoundingClientRect();
+    for (var k = 0; k <= FIB[5]; k++) {                                          // fib: up to 8 orb-heights
+      var dy = k * step, a = { left: Math.min(base.left, lb.left), right: Math.max(base.right, lb.right), top: Math.min(base.top, lb.top) - dy, bottom: base.bottom - dy };
+      if (a.top < 0) break;
+      if (!cs.some(function (c) { return hit(a, c.getBoundingClientRect()); })) { best = dy; break; }
+    }
+    R.setProperty("--orb-lift", best + "px");
+  }
+  var dq = 0; function soon() { if (dq) return; dq = requestAnimationFrame(function () { dq = 0; dodge(); }); }
+  new MutationObserver(soon).observe(D.getElementById("app"), { childList: true, subtree: true });
+  W.addEventListener("scroll", soon, { passive: true }); W.addEventListener("resize", soon); soon();
   paint();
-  W.HelpOrb = { paint: paint, drop: drop, helpFor: helpFor, settle: settle, close: closeBubble, look: look };   // drop(el) is the virtual drop for questionnaires
+  // one-time first-screen nudge: one gentle pulse and a hint that taps pass straight through
+  if (!N.S.orbNudged) {
+    N.S.orbNudged = true; N.save(); orb.classList.add("pulse-once");
+    show([p("Drag me onto anything to ask what it does.")]); bubble.classList.add("nudge");
+    var fade = function () { if (bubble.classList.contains("nudge")) { bubble.classList.remove("nudge"); closeBubble(); } };
+    setTimeout(fade, N.B() * MS); D.addEventListener("pointerdown", fade, { once: true, capture: true });
+    setTimeout(function () { orb.classList.remove("pulse-once"); }, N.B() * MS);
+  }
+  W.HelpOrb = { calm: calm, paint: paint, drop: drop, helpFor: helpFor, settle: settle, close: closeBubble, look: look };   // drop(el) is the virtual drop for questionnaires
 })(window, document);

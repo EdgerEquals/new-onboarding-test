@@ -62,6 +62,7 @@
   }
   // B stays within sky-B x PHI^+-k, k = the pace dial's live rung: an excited kid pulls B down to the limit and a slow one up to it,
   // mirrored (Danny's call, Steve's review 26 Oct). A hand nudge sets B on its own rung inside the same limit.
+  function skyBreath() { return tempB(skyB()); }                              // sky-B: the sky and weather pumps only
   function clampB(b) { var sb = tempB(skyB()), k = dials().pace.k; return Math.max(sb * Math.pow(IP, k), Math.min(sb * Math.pow(PHI, k), b)); }
   function B() { var n = knobRung("pace"); return clampB(n == null ? liveB() : Math.pow(PHI, n)); }
   var lastTap = null;
@@ -95,10 +96,11 @@
       r.style.setProperty("--g" + k, u * Math.pow(PHI, k - 1) + "px");
       r.style.setProperty("--h" + k, u * Math.pow(IP, k) + "px");
     }
-    r.style.setProperty("--t-quick", (rm() ? 0 : b * Math.pow(IP, 10)) + "ms");  // Rule phi: quick feedback B x PHI^-10
-    r.style.setProperty("--t1", (rm() ? 0 : b * Math.pow(IP, 9)) + "ms");        // Rule phi: transitions B x PHI^-9 / -8 / -7
-    r.style.setProperty("--t2", (rm() ? 0 : b * Math.pow(IP, 8)) + "ms");
-    r.style.setProperty("--t3", (rm() ? 0 : b * Math.pow(IP, 7)) + "ms");
+    var q = skyBreath() * MS;                                                    // tap feedback and transitions: sky-B, not the kid-moved B (Steve 26 Oct), so a slow kid's page stays quick
+    r.style.setProperty("--t-quick", (rm() ? 0 : q * Math.pow(IP, 10)) + "ms");  // Rule phi: quick feedback B x PHI^-10
+    r.style.setProperty("--t1", (rm() ? 0 : q * Math.pow(IP, 9)) + "ms");        // Rule phi: transitions B x PHI^-9 / -8 / -7
+    r.style.setProperty("--t2", (rm() ? 0 : q * Math.pow(IP, 8)) + "ms");
+    r.style.setProperty("--t3", (rm() ? 0 : q * Math.pow(IP, 7)) + "ms");
     r.style.setProperty("--breath", b + "ms");
     seasonTint();
   }
@@ -248,6 +250,6 @@
     applyScale: applyScale, dials: dials, rung: rung, weather: weather, unlock: unlock, chime: chime, pitch: pitch, AMP: AMP,
     setSound: function (v) { soundOn = v; if (RC.sound) RC.sound.save(); if (!v && ctx && W.NOTSound && W.NOTSound.quiet) W.NOTSound.quiet(); },
     get sound() { return soundOn; }, get ctx() { return ctx; }, get out() { return out; }, night: night,
-    knob: knob, setKnob: setKnob, liveSky: liveSky, liveB: liveB, reducedMotion: reducedMotion, rm: rm,
+    knob: knob, setKnob: setKnob, skyBreath: skyBreath, liveSky: liveSky, liveB: liveB, reducedMotion: reducedMotion, rm: rm,
     get wx() { return wx; }, kidGap: kidGap, skyB: skyB };
 })(window);

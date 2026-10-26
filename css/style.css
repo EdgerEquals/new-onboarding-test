@@ -1,11 +1,11 @@
 /* Every size and timing is a CSS variable set by js/core.js from the measured anchors (S = screen's shorter side, B = breath period)
    as anchor x PHI^n. Literal decimals here are phi values only (1.618 = PHI, .618 = 1/PHI, 2.618 = PHI^2, 4.236 = PHI^3, 6.854 = PHI^4,
-   1.236 = 2/PHI, .91 = 1 - PHI^-5, .382 = PHI^-2 in the free-wheel ease curve), plus 0, 1, 50%, 100%, 360deg (one turn) and z-index order. */
+   1.236 = 2/PHI, .91 = 1 - PHI^-5, 1.09 = 1 + PHI^-5, .236 = PHI^-3, 38.2% / 61.8% = PHI^-2 / PHI^-1, .382 = PHI^-2 in the free-wheel ease curve), plus 0, 1, 50%, 100%, 360deg (one turn) and z-index order. */
 :root { --bg: #000; --fg: #fff; --surface: #111; --accent: #fff; --warm: 0; --calm: 1; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body { background: var(--bg); color: var(--fg); font: calc(var(--u, 1rem)) / 1.618 system-ui, -apple-system, "Segoe UI", sans-serif;
-  padding-bottom: calc(var(--foot, var(--tap)) + var(--g2)); }
+  padding-bottom: calc(var(--foot, var(--tap)) + var(--g2) + var(--tap) * 1.236 + var(--g1)); }   /* room for the orb under the last control */
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--bg); filter: sepia(var(--warm)) saturate(var(--calm)); }
 #app { max-width: calc(var(--g5) * 4.236); margin: 0 auto; padding: var(--g2); }
 h1 { font-size: var(--g2); line-height: 1.236; margin: var(--g1) 0 var(--h1); }
@@ -105,14 +105,23 @@ html[data-light=on] .m-breathe, html[data-light=on] .m-spin { animation: none; }
 .tuning { font-size: var(--h1); font-weight: normal; border: calc(var(--h4)) dashed currentColor; border-radius: var(--h2); padding: 0 var(--h3); margin-left: var(--h2); opacity: .618; }
 .sheet h1:focus { outline: none; }
 /* help orb (on from the first screen; the look is the kid's own pick, the function is the same) */
-.help-orb { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1)); z-index: 25; width: calc(var(--tap) * 1.236); height: calc(var(--tap) * 1.236);
+.help-orb { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--orb-lift, 0px)); z-index: 25; width: calc(var(--tap) * 1.236); height: calc(var(--tap) * 1.236);
   border-radius: 50%; border: calc(var(--h4)) solid var(--accent); background: var(--surface); color: var(--fg); font-size: var(--g1); cursor: grab; touch-action: none;
-  display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; animation: breathe var(--breath) ease-in-out infinite; }
+  display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden;
+  background: radial-gradient(circle at 38.2% 38.2%, var(--fg), var(--accent) 61.8%, var(--surface)); box-shadow: 0 var(--h4) var(--h1) rgba(0, 0, 0, .382);
+  /* always gently alive (Danny 14:47 AWST; Rebella's orb as the look reference): it breathes at B x PHI^-2 and bobs at B x PHI^-3 (two rhythms a
+     golden ratio apart), on the free-wheel ease. It uses the individual scale/translate properties, so the drag's transform still works. */
+  animation: orb-breathe calc(var(--breath) * .382) cubic-bezier(.382, 0, .618, 1) infinite, orb-bob calc(var(--breath) * .236) cubic-bezier(.382, 0, .618, 1) infinite; }
+@keyframes orb-breathe { 0%, 100% { scale: 1; } 50% { scale: 1.09; } }
+@keyframes orb-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 calc(var(--h3) * -1); } }
+@keyframes orb-glow { 0%, 100% { box-shadow: 0 0 0 0 var(--accent); } 50% { box-shadow: 0 0 var(--h1) var(--h3) var(--accent); } }
+@keyframes orb-nudge { 0% { outline: calc(var(--h4)) solid var(--accent); outline-offset: 0; } 100% { outline: calc(var(--h4)) solid transparent; outline-offset: var(--g1); } }
 .help-orb .orb-face { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; font-size: var(--g1); line-height: 1; }
 .help-orb.armed { outline: calc(var(--h3)) dashed var(--fg); outline-offset: var(--h4); }
-.help-orb.dragging { cursor: grabbing; animation: none; opacity: .618; }
-html[data-rm=on] .help-orb { animation: none; }
-.help-bubble { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618); z-index: 26; max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618));
+.help-orb.dragging { cursor: grabbing; opacity: .618; }   /* calming: js/help-orb.js slows the rest motion to PHI^-2 while dragged */
+html[data-rm=on] .help-orb { animation: orb-glow calc(var(--breath) * 1.618) ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .help-orb { animation: orb-glow calc(var(--breath) * 1.618) ease-in-out infinite; } }
+.help-bubble { position: fixed; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618 + var(--orb-lift, 0px)); z-index: 26; max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618));
   background: var(--fg); color: var(--bg); padding: var(--h1) var(--g1); border-radius: var(--h1); font-size: var(--u); }
 .help-bubble p { margin: 0 0 var(--h2); }
 .orb-looks { display: flex; flex-wrap: wrap; gap: var(--h2); align-items: center; }
@@ -120,3 +129,24 @@ html[data-rm=on] .help-orb { animation: none; }
 .orb-looks input[type=text] { font-size: var(--u); margin: 0; }
 .help-grow { transform: scale(1.236); transition: transform var(--t2) cubic-bezier(.382, 1, .618, 1); position: relative; z-index: 5; }
 html[data-rm=on] .help-grow { transform: none; outline: calc(var(--h3)) solid var(--accent); }
+.help-bubble.nudge { pointer-events: none; }
+.help-orb.pulse-once::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; animation: orb-nudge calc(var(--breath) * .618) cubic-bezier(.382, 1, .618, 1) 1 forwards; }
+html[data-rm=on] .help-orb.pulse-once::after { animation: none; }
+.knob-now { margin: 0 0 var(--h2); font-size: var(--h1); }
+.tile.hear { font-size: var(--u); }
+
+/* Steve's v0.3 fixes (26 Oct). Sizes are rungs: 1.236 = 2 x PHI^-2, .618 = PHI^-1, .382 = PHI^-2 */
+.help-bubble.at-top { top: var(--g1); bottom: auto; }
+.orb-look-btn { position: fixed; z-index: 25; right: calc(var(--g1) + var(--tap) * 1.236 - var(--tap) * .382); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * .618 + var(--orb-lift, 0px));
+  width: calc(var(--tap) * .618); height: calc(var(--tap) * .618); min-width: 0; padding: 0; border-radius: 50%; border: 1px solid currentColor;
+  background: var(--surface); font-size: calc(var(--u) * .618); line-height: 1; cursor: pointer; }
+.orb-look-panel { position: fixed; z-index: 27; right: var(--g1); bottom: calc(var(--foot, var(--tap)) + var(--g1) + var(--tap) * 1.618 + var(--orb-lift, 0px));
+  max-width: min(calc(100% - var(--g2)), calc(var(--g5) * 2.618)); background: var(--surface); border: 1px solid currentColor; border-radius: var(--h1); padding: var(--g1); }
+.orb-look-panel p { margin: 0 0 var(--h2); }
+.top .tile { white-space: nowrap; flex: none; }
+.top.tight .steps-n { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.who { display: flex; gap: var(--g1); align-items: center; justify-content: center; }
+.who-logo, .who-bot { width: calc(var(--tap) * 1.618); height: calc(var(--tap) * 1.618); }
+.who-logo svg, .who-bot svg { width: 100%; height: 100%; }
+.more-box { display: flex; flex-direction: column; gap: var(--g1); }
+.tile.warn { outline: 2px solid currentColor; }
